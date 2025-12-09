@@ -10,24 +10,55 @@ import { OrderSummaryPage } from './module/user/pages/OrderSummaryPage'
 import { ProfilePage } from './module/user/pages/ProfilePage'
 import { SpaPage } from './module/user/pages/SpaPage'
 import { BottomNav } from './module/user/components/BottomNav'
+import { VendorAuth } from './module/vendor/vendor-pages/VendorAuth'
+import { VendorHome } from './module/vendor/vendor-pages/VendorHome'
+import { VendorWallet } from './module/vendor/vendor-pages/VendorWallet'
+import { VendorBookings } from './module/vendor/vendor-pages/VendorBookings'
+import { VendorAnalytics } from './module/vendor/vendor-pages/VendorAnalytics'
+import { VendorProfile } from './module/vendor/vendor-pages/VendorProfile'
+import { VendorNavbar } from './module/vendor/vendor-components/VendorNavbar'
 import './App.css'
 
 function AppContent() {
   const location = useLocation()
   const isProfilePage = location.pathname === '/profile'
+  const isVendorRoute = location.pathname.startsWith('/vendor')
+  const isVendorAuth = location.pathname === '/vendor/auth'
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Desktop top navigation */}
-      {!isProfilePage && (
-        <div className="hidden md:block sticky top-0 z-30">
-          <BottomNav />
-        </div>
+      {/* User Module Navigation */}
+      {!isProfilePage && !isVendorRoute && (
+        <>
+          {/* Desktop top navigation */}
+          <div className="hidden md:block sticky top-0 z-30">
+            <BottomNav />
+          </div>
+          {/* Mobile bottom navigation */}
+          <div className="block md:hidden fixed bottom-0 left-0 right-0 z-30">
+            <BottomNav />
+          </div>
+        </>
+      )}
+
+      {/* Vendor Module Navigation */}
+      {isVendorRoute && !isVendorAuth && (
+        <>
+          {/* Desktop top navigation */}
+          <div className="hidden md:block sticky top-0 z-30">
+            <VendorNavbar />
+          </div>
+          {/* Mobile bottom navigation */}
+          <div className="block md:hidden fixed bottom-0 left-0 right-0 z-30">
+            <VendorNavbar />
+          </div>
+        </>
       )}
 
       {/* Main content */}
-      <div className="flex-1 ">
+      <div className="flex-1">
         <Routes>
+          {/* User Routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/at-salon" element={<AtSalonPage />} />
           <Route path="/at-home" element={<AtHomePage />} />
@@ -38,15 +69,17 @@ function AppContent() {
           <Route path="/shops/:salonId" element={<ShopDetailsPage />} />
           <Route path="/order-summary" element={<OrderSummaryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          
+          {/* Vendor Routes */}
+          <Route path="/vendor/auth" element={<VendorAuth />} />
+          <Route path="/vendor" element={<VendorHome />} />
+          <Route path="/vendor/home" element={<VendorHome />} />
+          <Route path="/vendor/wallet" element={<VendorWallet />} />
+          <Route path="/vendor/bookings" element={<VendorBookings />} />
+          <Route path="/vendor/analytics" element={<VendorAnalytics />} />
+          <Route path="/vendor/profile" element={<VendorProfile />} />
         </Routes>
       </div>
-
-      {/* Mobile bottom navigation */}
-      {!isProfilePage && (
-        <div className="block md:hidden fixed bottom-0 left-0 right-0 z-30">
-          <BottomNav />
-        </div>
-      )}
     </div>
   )
 }

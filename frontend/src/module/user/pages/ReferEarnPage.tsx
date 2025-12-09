@@ -2,7 +2,7 @@ import { ReferEarnHeader } from '../components/ReferEarnHeader'
 import { ReferralStep } from '../components/ReferralStep'
 import { ReferralNote } from '../components/ReferralNote'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Building2, Scissors, Smartphone, Percent, DollarSign } from 'lucide-react'
+import { CheckCircle2, Building2, Scissors, Smartphone, Percent, IndianRupee } from 'lucide-react'
 
 export function ReferEarnPage() {
   const steps = [
@@ -14,7 +14,7 @@ export function ReferEarnPage() {
             <div className="w-3 h-5 bg-yellow-400/30 rounded-sm"></div>
             <div className="relative">
               <Smartphone className="w-5 h-5 text-yellow-400" />
-              <DollarSign className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 text-yellow-400" />
+              <IndianRupee className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 text-yellow-400" />
             </div>
             <div className="w-3 h-5 bg-yellow-400/30 rounded-sm"></div>
           </div>
