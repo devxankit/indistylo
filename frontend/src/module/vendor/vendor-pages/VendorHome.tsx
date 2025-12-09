@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, TrendingUp, Calendar, Users, IndianRupee, ChevronRight } from 'lucide-react';
+import { Search, TrendingUp, Calendar, Users, IndianRupee, ChevronRight, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -93,46 +93,40 @@ export function VendorHome() {
 
   return (
     <div className="min-h-screen bg-background pb-24 text-foreground">
-      {/* Header Section */}
+      {/* Search Header */}
       <div className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="px-4 py-4">
-          <div className="mb-4">
-            <p className="text-sm text-muted-foreground">Welcome back! Here's your overview</p>
-          </div>
-
+        <div className="px-4 py-3">
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
-            <div className="relative w-full h-12">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-10 pr-4 rounded-xl bg-card border border-border focus:outline-none focus:border-primary text-foreground"
-              />
-              {searchQuery.length === 0 && (
-                <div className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Search</span>
-                  <div className="relative h-5 overflow-hidden" style={{ minWidth: '80px' }}>
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={currentIndex}
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: -20, opacity: 0 }}
-                        transition={{ 
-                          duration: 0.4,
-                          ease: [0.4, 0, 0.2, 1]
-                        }}
-                        className="absolute inset-0 flex items-center text-muted-foreground"
-                      >
-                        {searchTerms[currentIndex]}
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-10 pr-4 rounded-xl bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
+            />
+            {searchQuery.length === 0 && (
+              <div className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1.5">
+                <span className="text-muted-foreground">Search</span>
+                <div className="relative h-5 overflow-hidden" style={{ minWidth: '90px' }}>
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={currentIndex}
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -20, opacity: 0 }}
+                      transition={{ 
+                        duration: 0.3,
+                        ease: [0.4, 0, 0.2, 1]
+                      }}
+                      className="absolute inset-0 flex items-center text-muted-foreground"
+                    >
+                      {searchTerms[currentIndex]}
+                    </motion.span>
+                  </AnimatePresence>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -183,18 +177,22 @@ export function VendorHome() {
             {recentBookings.map((booking) => (
               <div
                 key={booking.id}
-                className="bg-card border border-border rounded-xl p-4 space-y-3 hover:border-primary/50 transition-colors"
+                onClick={() => navigate(`/vendor/bookings/${booking.id}`)}
+                className="bg-card border border-border rounded-xl p-4 space-y-3 hover:border-primary/50 transition-colors cursor-pointer"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-foreground">{booking.customerName}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{booking.service}</p>
+                    <h3 className="font-semibold text-foreground mb-1">{booking.customerName}</h3>
+                    <p className="text-sm text-muted-foreground">{booking.service}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {booking.date}
                       </span>
-                      <span>{booking.time}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {booking.time}
+                      </span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -242,4 +240,3 @@ export function VendorHome() {
     </div>
   );
 }
-

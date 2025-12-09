@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Calendar, Clock, User, MapPin, IndianRupee, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Calendar, Clock, User, MapPin, IndianRupee, CheckCircle2, XCircle, AlertCircle, Phone, Mail, Search, Star, ChevronRight, MessageSquare, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
 type BookingTab = 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
@@ -9,12 +11,17 @@ interface Booking {
   id: string;
   customerName: string;
   customerPhone: string;
+  customerEmail?: string;
   service: string;
   date: string;
   time: string;
   status: BookingStatus;
   amount: number;
   address?: string;
+  duration: string;
+  rating?: number;
+  notes?: string;
+  paymentMethod: 'cash' | 'online' | 'wallet';
 }
 
 const mockBookings: Booking[] = [
@@ -22,23 +29,31 @@ const mockBookings: Booking[] = [
     id: '1',
     customerName: 'Rajesh Kumar',
     customerPhone: '+91 9876543210',
+    customerEmail: 'rajesh@example.com',
     service: 'Haircut & Styling',
     date: '2024-01-15',
     time: '10:00 AM',
     status: 'confirmed',
     amount: 499,
-    address: '123 Main Street, City',
+    address: '123 Main Street, City, State - 123456',
+    duration: '45 min',
+    rating: 4.8,
+    paymentMethod: 'online',
   },
   {
     id: '2',
     customerName: 'Priya Sharma',
     customerPhone: '+91 9876543211',
+    customerEmail: 'priya@example.com',
     service: 'Hair Color & Treatment',
     date: '2024-01-15',
     time: '2:00 PM',
     status: 'pending',
     amount: 1299,
-    address: '456 Park Avenue, City',
+    address: '456 Park Avenue, City, State - 123456',
+    duration: '2 hours',
+    paymentMethod: 'wallet',
+    notes: 'Customer prefers natural hair color',
   },
   {
     id: '3',
@@ -49,16 +64,22 @@ const mockBookings: Booking[] = [
     time: '11:00 AM',
     status: 'confirmed',
     amount: 299,
+    duration: '30 min',
+    paymentMethod: 'cash',
   },
   {
     id: '4',
     customerName: 'Sneha Patel',
     customerPhone: '+91 9876543213',
+    customerEmail: 'sneha@example.com',
     service: 'Facial Treatment',
     date: '2024-01-14',
     time: '3:00 PM',
     status: 'completed',
     amount: 899,
+    duration: '1 hour',
+    rating: 5.0,
+    paymentMethod: 'online',
   },
   {
     id: '5',
@@ -69,11 +90,29 @@ const mockBookings: Booking[] = [
     time: '4:00 PM',
     status: 'cancelled',
     amount: 399,
+    duration: '40 min',
+    paymentMethod: 'online',
   },
 ];
 
 export function VendorBookings() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<BookingTab>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+
+  useEffect(() => {
+    const activeButton = tabRefs.current[activeTab];
+    if (activeButton) {
+      activeButton.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [activeTab]);
 
   const getStatusIcon = (status: BookingStatus) => {
     switch (status) {
@@ -101,38 +140,117 @@ export function VendorBookings() {
     }
   };
 
-  const filteredBookings = activeTab === 'all' 
-    ? mockBookings 
-    : mockBookings.filter(booking => booking.status === activeTab);
+  const filteredBookings = mockBookings.filter(booking => {
+    const matchesTab = activeTab === 'all' || booking.status === activeTab;
+    const matchesSearch = searchQuery === '' || 
+      booking.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.customerPhone.includes(searchQuery);
+    return matchesTab && matchesSearch;
+  });
 
   const handleStatusChange = (bookingId: string, newStatus: BookingStatus) => {
     // Handle status change
     console.log('Status change', bookingId, newStatus);
   };
 
+  const stats = {
+    total: mockBookings.length,
+    pending: mockBookings.filter(b => b.status === 'pending').length,
+    confirmed: mockBookings.filter(b => b.status === 'confirmed').length,
+    completed: mockBookings.filter(b => b.status === 'completed').length,
+    revenue: mockBookings
+      .filter(b => b.status === 'completed' || b.status === 'confirmed')
+      .reduce((sum, b) => sum + b.amount, 0),
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background border-b border-border">
+        <div className="px-4 py-3">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, service, or phone..."
+              className="w-full h-11 pl-10 pr-4 rounded-xl bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="px-4 py-6">
+        {/* Stats Banner */}
+        <div className="bg-card border border-border rounded-xl p-4 mb-6">
+          <div className="grid grid-cols-4 gap-3">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total</p>
+              <p className="text-lg font-bold text-foreground">{stats.total}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Pending</p>
+              <p className="text-lg font-bold text-yellow-400">{stats.pending}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Confirmed</p>
+              <p className="text-lg font-bold text-green-400">{stats.confirmed}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Revenue</p>
+              <p className="text-lg font-bold text-primary">₹{stats.revenue}</p>
+            </div>
+          </div>
+        </div>
+
         {/* Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-6">
-          {(['all', 'pending', 'confirmed', 'completed', 'cancelled'] as BookingTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={cn(
-                'px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all',
-                activeTab === tab
-                  ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/30'
-                  : 'bg-card text-muted-foreground border border-border hover:border-primary/50'
-              )}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+        <div className="relative mb-6">
+          <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
+            {(['all', 'pending', 'confirmed', 'completed', 'cancelled'] as BookingTab[]).map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  ref={(el) => (tabRefs.current[tab] = el)}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    'relative px-2 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
+                    isActive
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {tab !== 'all' && (
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-full text-xs font-medium",
+                        isActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                      )}>
+                        {mockBookings.filter(b => b.status === tab).length}
+                      </span>
+                    )}
+                  </span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeBookingTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+                      transition={{
+                        type: 'tween',
+                        ease: [0.4, 0, 0.2, 1],
+                        duration: 0.4,
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {/* Scroll Hint - Right fade */}
+          <div className="absolute right-0 top-0 bottom-4 w-8 bg-gradient-to-l from-background via-background/80 to-transparent pointer-events-none" />
         </div>
 
         {/* Bookings List */}
@@ -141,61 +259,95 @@ export function VendorBookings() {
             {filteredBookings.map((booking) => (
               <div
                 key={booking.id}
-                className="bg-card border border-border rounded-xl p-4 space-y-4 hover:border-primary/50 transition-colors"
+                onClick={() => setSelectedBooking(booking)}
+                className="bg-card border border-border rounded-xl p-4 space-y-4 hover:border-primary/50 transition-colors cursor-pointer"
               >
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4 text-muted-foreground" />
-                      <h3 className="font-semibold text-foreground">{booking.customerName}</h3>
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-xl">
+                        {booking.customerName.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-foreground">{booking.customerName}</h3>
+                          {booking.status === 'completed' && booking.rating && (
+                            <div className="flex items-center gap-0.5">
+                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                              <span className="text-xs font-medium text-foreground">{booking.rating}</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{booking.customerPhone}</p>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{booking.customerPhone}</p>
-                  </div>
-                  <div className={cn(
-                    'px-3 py-1 rounded-lg border flex items-center gap-1.5 text-xs font-medium',
-                    getStatusColor(booking.status)
-                  )}>
-                    {getStatusIcon(booking.status)}
-                    {booking.status}
-                  </div>
-                </div>
-
-                {/* Service Details */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-foreground">{booking.service}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-foreground">{booking.date} • {booking.time}</span>
-                  </div>
-                  {booking.address && (
-                    <div className="flex items-start gap-2 text-sm">
-                      <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                      <span className="text-foreground">{booking.address}</span>
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        'px-3 py-1.5 rounded-lg border flex items-center gap-1.5 text-xs font-medium',
+                        getStatusColor(booking.status)
+                      )}>
+                        {getStatusIcon(booking.status)}
+                        {booking.status}
+                      </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Amount and Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <IndianRupee className="w-5 h-5 text-primary" />
-                    <span className="text-xl font-bold text-primary">₹{booking.amount}</span>
                   </div>
+
+                  {/* Service Details */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium text-foreground">{booking.service}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4" />
+                        {booking.date} • {booking.time}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {booking.duration}
+                      </span>
+                    </div>
+                    {booking.address && (
+                      <div className="flex items-start gap-2 text-sm">
+                        <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <span className="text-foreground">{booking.address}</span>
+                      </div>
+                    )}
+                    {booking.notes && (
+                      <div className="flex items-start gap-2 text-sm bg-muted/30 rounded-lg p-2">
+                        <MessageSquare className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <span className="text-foreground">{booking.notes}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Amount and Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <IndianRupee className="w-5 h-5 text-primary" />
+                      <span className="text-xl font-bold text-primary">₹{booking.amount}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({booking.paymentMethod})
+                      </span>
+                    </div>
                   <div className="flex gap-2">
                     {booking.status === 'pending' && (
                       <>
                         <button
-                          onClick={() => handleStatusChange(booking.id, 'confirmed')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusChange(booking.id, 'confirmed');
+                          }}
                           className="px-4 py-2 bg-green-400/10 text-green-400 border border-green-400/30 rounded-lg text-sm font-medium hover:bg-green-400/20 transition-colors"
                         >
                           Accept
                         </button>
                         <button
-                          onClick={() => handleStatusChange(booking.id, 'cancelled')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusChange(booking.id, 'cancelled');
+                          }}
                           className="px-4 py-2 bg-red-400/10 text-red-400 border border-red-400/30 rounded-lg text-sm font-medium hover:bg-red-400/20 transition-colors"
                         >
                           Reject
@@ -204,12 +356,24 @@ export function VendorBookings() {
                     )}
                     {booking.status === 'confirmed' && (
                       <button
-                        onClick={() => handleStatusChange(booking.id, 'completed')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(booking.id, 'completed');
+                        }}
                         className="px-4 py-2 bg-primary/10 text-primary border border-primary/30 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
                       >
                         Mark Complete
                       </button>
                     )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedBooking(booking);
+                      }}
+                      className="p-2 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
+                    >
+                      <Eye className="w-4 h-4 text-foreground" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -217,14 +381,161 @@ export function VendorBookings() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
             <p className="text-muted-foreground text-sm">
               No {activeTab === 'all' ? '' : activeTab} bookings found
             </p>
           </div>
         )}
       </div>
+
+      {/* Booking Detail Bottom Sheet */}
+      <AnimatePresence>
+        {selectedBooking && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+              onClick={() => setSelectedBooking(null)}
+            />
+            
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ 
+                type: 'spring',
+                damping: 25,
+                stiffness: 200
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col border-t border-border"
+            >
+              {/* Drag Handle */}
+              <div className="flex justify-center pt-2.5 pb-2">
+                <div className="w-12 h-1 bg-muted-foreground/40 rounded-full" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 pb-3 border-b border-border">
+                <h2 className="text-lg font-bold text-foreground">Booking Details</h2>
+                <button
+                  onClick={() => setSelectedBooking(null)}
+                  className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-hide">
+                {/* Customer Info */}
+                <div className="bg-muted/30 border border-border rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="w-4 h-4 text-primary" />
+                    <h3 className="font-semibold text-foreground text-sm">Customer</h3>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Name</span>
+                      <span className="text-sm font-medium text-foreground">{selectedBooking.customerName}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-sm text-foreground">{selectedBooking.customerPhone}</span>
+                    </div>
+                    {selectedBooking.customerEmail && (
+                      <div className="flex items-center justify-between">
+                        <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-sm text-foreground">{selectedBooking.customerEmail}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Service Details */}
+                <div className="bg-muted/30 border border-border rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <h3 className="font-semibold text-foreground text-sm">Service</h3>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Service</span>
+                      <span className="text-sm font-medium text-foreground">{selectedBooking.service}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Date & Time</span>
+                      <span className="text-sm font-medium text-foreground">{selectedBooking.date} • {selectedBooking.time}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Duration</span>
+                      <span className="text-sm font-medium text-foreground">{selectedBooking.duration}</span>
+                    </div>
+                    {selectedBooking.address && (
+                      <div className="flex items-start justify-between pt-1.5 border-t border-border">
+                        <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5" />
+                        <span className="text-xs text-foreground text-right flex-1 ml-2">{selectedBooking.address}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Payment Info */}
+                <div className="bg-muted/30 border border-border rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <IndianRupee className="w-4 h-4 text-primary" />
+                    <h3 className="font-semibold text-foreground text-sm">Payment</h3>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Amount</span>
+                      <span className="text-lg font-bold text-primary">₹{selectedBooking.amount}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Method</span>
+                      <span className="text-sm font-medium text-foreground capitalize">{selectedBooking.paymentMethod}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  {selectedBooking.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleStatusChange(selectedBooking.id, 'confirmed')}
+                        className="flex-1 h-11 bg-green-400/10 text-green-400 border border-green-400/30 rounded-xl text-sm font-medium hover:bg-green-400/20 transition-colors"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(selectedBooking.id, 'cancelled')}
+                        className="flex-1 h-11 bg-red-400/10 text-red-400 border border-red-400/30 rounded-xl text-sm font-medium hover:bg-red-400/20 transition-colors"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                  {selectedBooking.status === 'confirmed' && (
+                    <button
+                      onClick={() => handleStatusChange(selectedBooking.id, 'completed')}
+                      className="w-full h-11 bg-primary/10 text-primary border border-primary/30 rounded-xl text-sm font-medium hover:bg-primary/20 transition-colors"
+                    >
+                      Mark Complete
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-

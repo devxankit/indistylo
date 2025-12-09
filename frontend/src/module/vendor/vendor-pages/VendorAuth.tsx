@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Phone, Building2, User, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Phone, Building2, User, Sparkles, CheckCircle2, ArrowRight, LogIn, UserPlus, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useVendorStore } from '../store/useVendorStore';
 
 type VendorType = 'salon' | 'freelancer' | 'spa' | null;
-type AuthStep = 'type-selection' | 'phone-input' | 'otp-verification' | 'onboarding';
+type AuthMode = 'login' | 'signup' | null;
+type AuthStep = 'auth-mode' | 'type-selection' | 'phone-input' | 'otp-verification' | 'onboarding';
 
 interface OnboardingFormData {
   businessName: string;
@@ -25,7 +26,8 @@ interface OnboardingFormData {
 export function VendorAuth() {
   const navigate = useNavigate();
   const { vendorType, phoneNumber, setVendorType, setPhoneNumber, setAuthenticated, setProfile } = useVendorStore();
-  const [step, setStep] = useState<AuthStep>('type-selection');
+  const [step, setStep] = useState<AuthStep>('auth-mode');
+  const [authMode, setAuthMode] = useState<AuthMode>(null);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [formData, setFormData] = useState<OnboardingFormData>({
     businessName: '',
@@ -74,7 +76,14 @@ export function VendorAuth() {
     const otpValue = otp.join('');
     if (otpValue.length === 6) {
       // Simulate OTP verification
-      setStep('onboarding');
+      if (authMode === 'login') {
+        // For login, authenticate and navigate directly
+        setAuthenticated(true);
+        navigate('/vendor/home');
+      } else {
+        // For signup, proceed to onboarding
+        setStep('onboarding');
+      }
     }
   };
 
@@ -130,10 +139,112 @@ export function VendorAuth() {
     <div className="min-h-screen bg-background text-foreground pb-24">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+        {step !== 'auth-mode' && (
+          <div className="px-4 py-3 flex items-center">
+            <button
+              onClick={() => {
+                if (step === 'phone-input') {
+                  if (authMode === 'login') {
+                    setStep('auth-mode');
+                  } else {
+                    setStep('type-selection');
+                  }
+                } else if (step === 'otp-verification') {
+                  setStep('phone-input');
+                } else if (step === 'type-selection') {
+                  setStep('auth-mode');
+                } else if (step === 'onboarding') {
+                  setStep('otp-verification');
+                }
+              }}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="px-4 py-6">
-        {/* Step 1: Vendor Type Selection */}
+        {/* Step 1: Auth Mode Selection (Login or Sign Up) */}
+        {step === 'auth-mode' && (
+          <div className="space-y-6 max-w-md mx-auto">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-foreground mb-2">
+                Welcome to IndiStylo
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Choose an option to continue
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setAuthMode('login');
+                  setStep('phone-input');
+                }}
+                className={cn(
+                  'w-full p-5 rounded-xl border-2 transition-all text-left hover:scale-[1.02] active:scale-[0.98]',
+                  authMode === 'login'
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-400 border-current'
+                    : 'bg-card border-border hover:border-primary/50 hover:bg-card/80'
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={cn(
+                      'p-3 rounded-lg transition-all',
+                      authMode === 'login' ? 'bg-blue-400/20 scale-110' : 'bg-muted'
+                    )}
+                  >
+                    <LogIn className={cn('w-6 h-6 transition-colors', authMode === 'login' ? 'text-blue-400' : 'text-muted-foreground')} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-foreground mb-1 text-base">Login</h3>
+                    <p className="text-sm text-muted-foreground">Sign in to your existing account</p>
+                  </div>
+                  {authMode === 'login' && (
+                    <CheckCircle2 className="w-6 h-6 text-blue-400 shrink-0 animate-in fade-in zoom-in duration-200" />
+                  )}
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setAuthMode('signup');
+                  setStep('type-selection');
+                }}
+                className={cn(
+                  'w-full p-5 rounded-xl border-2 transition-all text-left hover:scale-[1.02] active:scale-[0.98]',
+                  authMode === 'signup'
+                    ? 'bg-purple-500/10 text-purple-400 border-purple-400 border-current'
+                    : 'bg-card border-border hover:border-primary/50 hover:bg-card/80'
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={cn(
+                      'p-3 rounded-lg transition-all',
+                      authMode === 'signup' ? 'bg-purple-400/20 scale-110' : 'bg-muted'
+                    )}
+                  >
+                    <UserPlus className={cn('w-6 h-6 transition-colors', authMode === 'signup' ? 'text-purple-400' : 'text-muted-foreground')} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-foreground mb-1 text-base">Sign Up</h3>
+                    <p className="text-sm text-muted-foreground">Create a new vendor account</p>
+                  </div>
+                  {authMode === 'signup' && (
+                    <CheckCircle2 className="w-6 h-6 text-purple-400 shrink-0 animate-in fade-in zoom-in duration-200" />
+                  )}
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Vendor Type Selection (only for signup) */}
         {step === 'type-selection' && (
           <div className="space-y-6 max-w-2xl mx-auto">
             <div className="text-center mb-6">
@@ -184,7 +295,7 @@ export function VendorAuth() {
           </div>
         )}
 
-        {/* Step 2: Phone Number Input */}
+        {/* Step 3: Phone Number Input */}
         {step === 'phone-input' && (
           <div className="space-y-6 max-w-md mx-auto">
             <div className="text-center mb-6">
@@ -192,7 +303,9 @@ export function VendorAuth() {
                 <Phone className="w-8 h-8 text-primary" />
               </div>
               <p className="text-muted-foreground text-sm">
-                We'll send you a verification code via SMS
+                {authMode === 'login' 
+                  ? 'Enter your phone number to login'
+                  : 'We\'ll send you a verification code via SMS'}
               </p>
             </div>
 
@@ -226,7 +339,7 @@ export function VendorAuth() {
           </div>
         )}
 
-        {/* Step 3: OTP Verification */}
+        {/* Step 4: OTP Verification */}
         {step === 'otp-verification' && (
           <div className="space-y-6 max-w-md mx-auto">
             <div className="text-center mb-6">
@@ -259,7 +372,7 @@ export function VendorAuth() {
 
               <div className="text-center space-y-2">
                 <button
-                  type="submit" form="onboarding-form"
+                  type="button"
                   onClick={() => {
                     setStep('phone-input');
                   }}
@@ -273,9 +386,9 @@ export function VendorAuth() {
           </div>
         )}
 
-        {/* Step 4: Onboarding Form */}
+        {/* Step 5: Onboarding Form (only for signup) */}
         {step === 'onboarding' && (
-          <form id="onboarding-form" onSubmit={handleOnboardingSubmit} className="space-y-6 max-w-2xl mx-auto pb-6">
+          <form onSubmit={handleOnboardingSubmit} className="space-y-6 max-w-2xl mx-auto pb-6">
             <div className="text-center mb-6">
               <p className="text-muted-foreground text-sm">
                 {vendorType === 'salon' && 'Tell us about your salon'}
@@ -471,6 +584,27 @@ export function VendorAuth() {
 
       {/* Fixed Bottom Button for all steps */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-4 safe-area-bottom">
+        {step === 'auth-mode' && (
+          <button
+            onClick={() => {
+              if (authMode === 'login') {
+                setStep('phone-input');
+              } else if (authMode === 'signup') {
+                setStep('type-selection');
+              }
+            }}
+            disabled={!authMode}
+            className={cn(
+              "w-full h-14 font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2",
+              !authMode
+                ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
+                : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
+            )}
+          >
+            Continue
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        )}
         {step === 'type-selection' && (
           <button
             onClick={() => vendorType && setStep('phone-input')}
@@ -488,7 +622,7 @@ export function VendorAuth() {
         )}
         {step === 'phone-input' && (
           <button
-            type="submit" form="onboarding-form"
+            type="button"
             onClick={(e) => {
               e.preventDefault();
               if (phoneNumber.length === 10) {
@@ -503,7 +637,7 @@ export function VendorAuth() {
                 : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
             )}
           >
-            Send OTP
+            {authMode === 'login' ? 'Login' : 'Send OTP'}
             <ArrowRight className="w-5 h-5" />
           </button>
         )}
@@ -518,13 +652,17 @@ export function VendorAuth() {
                 : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
             )}
           >
-            Verify & Continue
+            {authMode === 'login' ? 'Login' : 'Verify & Continue'}
             <ArrowRight className="w-5 h-5" />
           </button>
         )}
         {step === 'onboarding' && (
           <button
-            type="submit" form="onboarding-form"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              handleOnboardingSubmit(e as any);
+            }}
             className="w-full h-14 bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2"
           >
             Complete Registration
@@ -535,8 +673,4 @@ export function VendorAuth() {
     </div>
   );
 }
-
-
-
-
 
