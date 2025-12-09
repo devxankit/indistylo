@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, IndianRupee, Users, Calendar, ArrowUp, ArrowDown } from 'lucide-react';
+import { TrendingUp, IndianRupee, Users, Calendar, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type TimeRange = 'today' | 'week' | 'month' | 'year';
