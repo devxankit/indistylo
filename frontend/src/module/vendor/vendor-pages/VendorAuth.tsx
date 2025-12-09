@@ -259,7 +259,7 @@ export function VendorAuth() {
 
               <div className="text-center space-y-2">
                 <button
-                  type="button"
+                  type="submit" form="onboarding-form"
                   onClick={() => {
                     setStep('phone-input');
                   }}
@@ -275,7 +275,7 @@ export function VendorAuth() {
 
         {/* Step 4: Onboarding Form */}
         {step === 'onboarding' && (
-          <form onSubmit={handleOnboardingSubmit} className="space-y-6 max-w-2xl mx-auto pb-6">
+          <form id="onboarding-form" onSubmit={handleOnboardingSubmit} className="space-y-6 max-w-2xl mx-auto pb-6">
             <div className="text-center mb-6">
               <p className="text-muted-foreground text-sm">
                 {vendorType === 'salon' && 'Tell us about your salon'}
@@ -488,7 +488,7 @@ export function VendorAuth() {
         )}
         {step === 'phone-input' && (
           <button
-            type="button"
+            type="submit" form="onboarding-form"
             onClick={(e) => {
               e.preventDefault();
               if (phoneNumber.length === 10) {
@@ -524,11 +524,7 @@ export function VendorAuth() {
         )}
         {step === 'onboarding' && (
           <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              handleOnboardingSubmit(e as any);
-            }}
+            type="submit" form="onboarding-form"
             className="w-full h-14 bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2"
           >
             Complete Registration
@@ -539,4 +535,8 @@ export function VendorAuth() {
     </div>
   );
 }
+
+
+
+
 
