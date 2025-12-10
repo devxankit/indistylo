@@ -100,7 +100,6 @@ export function VendorBookings() {
   const [activeTab, setActiveTab] = useState<BookingTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
   useEffect(() => {
@@ -214,7 +213,7 @@ export function VendorBookings() {
               return (
                 <button
                   key={tab}
-                  ref={(el) => (tabRefs.current[tab] = el)}
+                  ref={(el) => { tabRefs.current[tab] = el; }}
                   onClick={() => setActiveTab(tab)}
                   className={cn(
                     'relative px-2 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',

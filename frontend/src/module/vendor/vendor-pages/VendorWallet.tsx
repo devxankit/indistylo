@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Wallet, TrendingUp, ArrowRight, ArrowDown, ArrowUp, Download, CreditCard, History, Calendar } from 'lucide-react';
+import { Wallet, ArrowDown, ArrowUp, Download, CreditCard, History, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -190,12 +190,12 @@ export function VendorWallet() {
           </div>
           <div className="relative">
             <div className="flex gap-6 overflow-x-auto scrollbar-hide">
-              {(['all', 'credit', 'debit'] as FilterType[]).map((f, index) => {
+              {(['all', 'credit', 'debit'] as FilterType[]).map((f) => {
                 const isActive = filter === f;
                 return (
                   <button
                     key={f}
-                    ref={(el) => (filterRefs.current[f] = el)}
+                    ref={(el) => { filterRefs.current[f] = el; }}
                     onClick={() => setFilter(f)}
                     className={cn(
                       'relative px-2 py-2.5 text-sm font-medium transition-colors whitespace-nowrap',
