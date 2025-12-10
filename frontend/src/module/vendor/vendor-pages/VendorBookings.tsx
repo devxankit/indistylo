@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Calendar, Clock, User, MapPin, IndianRupee, CheckCircle2, XCircle, AlertCircle, Phone, Mail, Search, Star, ChevronRight, MessageSquare, Eye } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, IndianRupee, CheckCircle2, XCircle, AlertCircle, Phone, Mail, Search, Star, MessageSquare, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
@@ -96,7 +95,6 @@ const mockBookings: Booking[] = [
 ];
 
 export function VendorBookings() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<BookingTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);

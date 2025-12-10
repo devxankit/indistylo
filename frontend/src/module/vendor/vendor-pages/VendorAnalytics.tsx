@@ -135,9 +135,6 @@ export function VendorAnalytics() {
     },
   ];
 
-  const maxRevenue = Math.max(...revenueChartData.map(d => d.revenue));
-  const maxBookings = Math.max(...bookingsChartData.map(d => d.bookings));
-
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
       {/* Header */}
@@ -151,7 +148,7 @@ export function VendorAnalytics() {
                 return (
                   <button
                     key={range}
-                    ref={(el) => (timeRangeRefs.current[range] = el)}
+                    ref={(el) => { timeRangeRefs.current[range] = el; }}
                     onClick={() => setTimeRange(range)}
                     className={cn(
                       'relative px-2 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
@@ -256,7 +253,7 @@ export function VendorAnalytics() {
                   formatter={(value: number) => [`₹${value}`, 'Revenue']}
                 />
                 <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
-                  {revenueChartData.map((entry, index) => (
+                  {revenueChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill="#fbbf24" />
                   ))}
                 </Bar>
@@ -302,7 +299,7 @@ export function VendorAnalytics() {
                   formatter={(value: number) => [`${value}`, 'Bookings']}
                 />
                 <Bar dataKey="bookings" radius={[8, 8, 0, 0]}>
-                  {bookingsChartData.map((entry, index) => (
+                  {bookingsChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill="#fbbf24" />
                   ))}
                 </Bar>
