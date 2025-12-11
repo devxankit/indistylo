@@ -60,6 +60,7 @@ function AppContent() {
         <Routes>
           {/* User Routes */}
           <Route path="/" element={<HomePage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/at-salon" element={<AtSalonPage />} />
           <Route path="/at-home" element={<AtHomePage />} />
           <Route path="/bookings" element={<BookingsPage />} />
