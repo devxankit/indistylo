@@ -14,6 +14,7 @@ import { VendorAuth } from './module/vendor/vendor-pages/VendorAuth'
 import { VendorHome } from './module/vendor/vendor-pages/VendorHome'
 import { VendorWallet } from './module/vendor/vendor-pages/VendorWallet'
 import { VendorBookings } from './module/vendor/vendor-pages/VendorBookings'
+import { VendorBookingDetail } from './module/vendor/vendor-pages/VendorBookingDetail'
 import { VendorAnalytics } from './module/vendor/vendor-pages/VendorAnalytics'
 import { VendorProfile } from './module/vendor/vendor-pages/VendorProfile'
 import { VendorNavbar } from './module/vendor/vendor-components/VendorNavbar'
@@ -77,6 +78,7 @@ function AppContent() {
           <Route path="/vendor/home" element={<VendorHome />} />
           <Route path="/vendor/wallet" element={<VendorWallet />} />
           <Route path="/vendor/bookings" element={<VendorBookings />} />
+          <Route path="/vendor/bookings/:id" element={<VendorBookingDetail />} />
           <Route path="/vendor/analytics" element={<VendorAnalytics />} />
           <Route path="/vendor/profile" element={<VendorProfile />} />
         </Routes>

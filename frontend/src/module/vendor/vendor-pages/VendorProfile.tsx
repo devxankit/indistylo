@@ -1,8 +1,57 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Settings, Bell, LogOut, Building2, Phone, Mail, MapPin, IndianRupee, Shield, FileText, Calendar, Users, Star, Award, Edit3, Target, ChevronRight } from 'lucide-react';
+import { Pencil, Settings, Bell, LogOut, Building2, Phone, Mail, MapPin, IndianRupee, Shield, FileText, Calendar, Users, Star, Award, Edit3, Target, ChevronRight, Camera } from 'lucide-react';
 import { useVendorStore } from '../store/useVendorStore';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { staggerContainer, staggerItem, transitions } from '@/lib/animations';
+import { useCountUp } from '@/hooks/useCountUp';
+import { useTouchFeedback } from '@/lib/touch';
+
+// Memoized stat card component
+const ProfileStatCard = memo(({ item, index }: { item: typeof achievements[0] | typeof stats[0]; index: number }) => {
+  const Icon = item.icon;
+  const touchFeedback = useTouchFeedback();
+  
+  // Parse numeric value if possible
+  const numericValue = useMemo(() => {
+    const match = item.value.match(/[\d.]+/);
+    return match ? parseFloat(match[0]) : 0;
+  }, [item.value]);
+  
+  const animatedValue = useCountUp(numericValue, { duration: 1500, decimals: item.value.includes('.') ? 1 : 0 });
+  const displayValue = item.value.includes('₹')
+    ? `₹${animatedValue.toLocaleString()}`
+    : item.value.replace(/[\d.]+/, animatedValue.toString());
+
+  return (
+    <motion.div
+      variants={staggerItem}
+      initial="hidden"
+      animate="visible"
+      className="bg-gradient-to-br from-card to-card/80 border border-border rounded-xl p-4 min-h-[100px] flex flex-col justify-between touch-manipulation active:scale-[0.98]"
+      {...touchFeedback}
+    >
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="p-2 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+          <Icon className="w-5 h-5 text-primary" />
+        </div>
+        <p className="text-xs text-muted-foreground flex-1">{item.label}</p>
+      </div>
+      <motion.p
+        key={animatedValue}
+        initial={{ scale: 1.1 }}
+        animate={{ scale: 1 }}
+        transition={transitions.quick}
+        className="text-lg font-bold text-foreground"
+      >
+        {displayValue}
+      </motion.p>
+    </motion.div>
+  );
+});
+
+ProfileStatCard.displayName = 'ProfileStatCard';
 
 export function VendorProfile() {
   const navigate = useNavigate();
@@ -25,17 +74,22 @@ export function VendorProfile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsUploading(true);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
+        setTimeout(() => {
+          setAvatarUrl(reader.result as string);
+          setIsUploading(false);
+        }, 500); // Simulate upload delay
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
   const profileMenuItems = [
     {
@@ -106,16 +160,72 @@ export function VendorProfile() {
 
       <div className="px-4 py-6 space-y-5">
         {/* Profile Header Card */}
-        <div className="bg-card border border-border rounded-xl p-5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={transitions.smooth}
+          className="bg-gradient-to-br from-card to-card/80 border border-border rounded-xl p-5 shadow-sm"
+        >
           <div className="flex items-start gap-4">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border-2 border-background">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-4xl">👤</span>
+            <motion.div
+              className="relative"
+              whileHover={{ scale: 1.05 }}
+              transition={transitions.quick}
+            >
+              <motion.div
+                className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center overflow-hidden border-2 border-background relative min-w-[80px] min-h-[80px]"
+                animate={isUploading ? { scale: [1, 1.1, 1] } : {}}
+                transition={{ duration: 0.5, repeat: isUploading ? Infinity : 0 }}
+              >
+                <AnimatePresence mode="wait">
+                  {avatarUrl ? (
+                    <motion.img
+                      key="avatar"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={transitions.smooth}
+                      src={avatarUrl}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <motion.span
+                      key="emoji"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={transitions.smooth}
+                      className="text-4xl"
+                    >
+                      👤
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                {isUploading && (
+                  <motion.div
+                    className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <motion.div
+                      className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 w-8 h-8 min-w-[44px] min-h-[44px] bg-primary rounded-full flex items-center justify-center border-2 border-background shadow-lg touch-manipulation"
+                aria-label="Change avatar"
+              >
+                <Camera className="w-4 h-4 text-black" />
+              </motion.button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -123,7 +233,7 @@ export function VendorProfile() {
                 onChange={handleAvatarChange}
                 className="hidden"
               />
-            </div>
+            </motion.div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex-1 min-w-0">
@@ -138,12 +248,20 @@ export function VendorProfile() {
                     <p className="text-xs text-muted-foreground">Owner: {ownerName}</p>
                   )}
                 </div>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => setIsEditing(!isEditing)}
-                  className="p-2 bg-muted/50 border border-border rounded-lg hover:border-primary/50 transition-colors flex-shrink-0"
+                  className="p-2 min-w-[44px] min-h-[44px] bg-muted/50 border border-border rounded-lg hover:border-primary/50 transition-colors flex-shrink-0 touch-manipulation flex items-center justify-center"
+                  aria-label={isEditing ? "Cancel editing" : "Edit profile"}
                 >
-                  <Edit3 className="w-4 h-4 text-foreground" />
-                </button>
+                  <motion.div
+                    animate={isEditing ? { rotate: 180 } : { rotate: 0 }}
+                    transition={transitions.smooth}
+                  >
+                    <Edit3 className="w-4 h-4 text-foreground" />
+                  </motion.div>
+                </motion.button>
               </div>
               <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
                 <div className="flex items-center gap-1.5">
@@ -155,49 +273,77 @@ export function VendorProfile() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stats Grid - Combined Achievements and Business Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          {[...achievements, ...stats].map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={index}
-                className="bg-card border border-border rounded-xl p-4"
-              >
-                <div className="flex items-center gap-2.5 mb-2">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <p className="text-xs text-muted-foreground flex-1">{item.label}</p>
-                </div>
-                <p className="text-lg font-bold text-foreground">{item.value}</p>
-              </div>
-            );
-          })}
-        </div>
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 gap-4"
+        >
+          {[...achievements, ...stats].map((item, index) => (
+            <ProfileStatCard key={index} item={item} index={index} />
+          ))}
+        </motion.div>
 
         {/* Contact Information */}
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={transitions.smooth}
+          className="bg-card border border-border rounded-xl p-4 space-y-3"
+        >
           <h2 className="text-sm font-semibold text-foreground">Contact Information</h2>
-          <div className="space-y-2">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="space-y-2"
+          >
             {phoneNumber && (
-              <div className="flex items-center gap-2.5 p-2.5 bg-muted/30 rounded-lg">
+              <motion.div
+                variants={staggerItem}
+                className="flex items-center gap-2.5 p-2.5 bg-muted/30 rounded-lg min-h-[44px] touch-manipulation active:scale-[0.98]"
+              >
                 <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <span className="text-sm text-foreground flex-1">{phoneNumber}</span>
-                {isEditing && <Pencil className="w-3.5 h-3.5 text-muted-foreground" />}
-              </div>
+                {isEditing && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="p-1 min-w-[32px] min-h-[32px] touch-manipulation"
+                    aria-label="Edit phone"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                  </motion.button>
+                )}
+              </motion.div>
             )}
             {email && (
-              <div className="flex items-center gap-2.5 p-2.5 bg-muted/30 rounded-lg">
+              <motion.div
+                variants={staggerItem}
+                className="flex items-center gap-2.5 p-2.5 bg-muted/30 rounded-lg min-h-[44px] touch-manipulation active:scale-[0.98]"
+              >
                 <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <span className="text-sm text-foreground flex-1 truncate">{email}</span>
-                {isEditing && <Pencil className="w-3.5 h-3.5 text-muted-foreground" />}
-              </div>
+                {isEditing && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="p-1 min-w-[32px] min-h-[32px] touch-manipulation"
+                    aria-label="Edit email"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                  </motion.button>
+                )}
+              </motion.div>
             )}
             {address && (
-              <div className="flex items-start gap-2.5 p-2.5 bg-muted/30 rounded-lg">
+              <motion.div
+                variants={staggerItem}
+                className="flex items-start gap-2.5 p-2.5 bg-muted/30 rounded-lg min-h-[44px] touch-manipulation active:scale-[0.98]"
+              >
                 <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground">{address}</p>
@@ -207,11 +353,20 @@ export function VendorProfile() {
                     </p>
                   )}
                 </div>
-                {isEditing && <Pencil className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
-              </div>
+                {isEditing && (
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="p-1 min-w-[32px] min-h-[32px] touch-manipulation flex-shrink-0"
+                    aria-label="Edit address"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                  </motion.button>
+                )}
+              </motion.div>
             )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Business Details */}
         {(gstNumber || aadharNumber || experience || specialization) && (
@@ -247,27 +402,41 @@ export function VendorProfile() {
         )}
 
         {/* Menu Items */}
-        <div className="space-y-2">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="space-y-2"
+        >
           {profileMenuItems.map((item, index) => {
             const Icon = item.icon;
             return (
-              <button
+              <motion.button
                 key={index}
+                variants={staggerItem}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={item.onClick}
                 className={cn(
-                  'w-full flex items-center gap-3 p-3 bg-card border border-border rounded-xl hover:border-primary/50 transition-colors text-left group',
+                  'w-full flex items-center gap-3 p-3 min-h-[64px] bg-card border border-border rounded-xl hover:border-primary/50 transition-all text-left group touch-manipulation',
                   item.variant === 'destructive' && 'border-red-400/30 hover:border-red-400/50'
                 )}
               >
-                <div className={cn(
-                  "p-1.5 rounded-lg",
-                  item.variant === 'destructive' ? 'bg-red-400/10' : 'bg-primary/10 group-hover:bg-primary/20 transition-colors'
-                )}>
+                <motion.div
+                  className={cn(
+                    "p-1.5 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center",
+                    item.variant === 'destructive' ? 'bg-red-400/10' : 'bg-primary/10 group-hover:bg-primary/20 transition-colors'
+                  )}
+                  animate={item.variant === 'destructive' ? {} : {
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                >
                   <Icon className={cn(
                     'w-4 h-4',
                     item.variant === 'destructive' ? 'text-red-400' : 'text-primary'
                   )} />
-                </div>
+                </motion.div>
                 <div className="flex-1 min-w-0">
                   <p className={cn(
                     'text-sm font-semibold',
@@ -277,14 +446,19 @@ export function VendorProfile() {
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
                 </div>
-                <ChevronRight className={cn(
-                  "w-4 h-4 transition-transform group-hover:translate-x-1 flex-shrink-0",
-                  item.variant === 'destructive' ? 'text-red-400' : 'text-muted-foreground'
-                )} />
-              </button>
+                <motion.div
+                  animate={{ x: [0, 4, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
+                >
+                  <ChevronRight className={cn(
+                    "w-4 h-4 transition-transform group-hover:translate-x-1 flex-shrink-0",
+                    item.variant === 'destructive' ? 'text-red-400' : 'text-muted-foreground'
+                  )} />
+                </motion.div>
+              </motion.button>
             );
           })}
-        </div>
+        </motion.div>
       </div>
     </div>
   );

@@ -1,8 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
 import { TrendingUp, IndianRupee, Users, Calendar, ArrowUp, ArrowDown, BarChart3, Target, Star, Clock, Activity, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { staggerContainer, staggerItem, transitions } from '@/lib/animations';
+import { useCountUp } from '@/hooks/useCountUp';
+import { useSwipe } from '@/lib/touch';
+import { CardSkeleton } from '@/components/ui/skeleton';
 
 type TimeRange = 'today' | 'week' | 'month' | 'year';
 
@@ -91,9 +95,197 @@ const performanceMetrics = [
   { label: 'Retention Rate', value: 78, icon: Users },
 ];
 
+// Memoized chart component for performance
+const RevenueChart = memo(({ data }: { data: typeof revenueChartData }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
+
+  return (
+    <div className="h-64 relative">
+      {!isLoaded ? (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <CardSkeleton className="w-full h-full" />
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={transitions.smooth}
+          className="h-full"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" opacity={0.3} />
+              <XAxis 
+                dataKey="day" 
+                stroke="#a0a0a0"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis 
+                stroke="#a0a0a0"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `₹${value}`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#202020',
+                  border: '1px solid #3a3a3a',
+                  borderRadius: '8px',
+                  color: '#f5f5f5',
+                }}
+                labelStyle={{ color: '#f5f5f5' }}
+                formatter={(value: number) => [`₹${value}`, 'Revenue']}
+                animationDuration={200}
+              />
+              <Bar dataKey="revenue" radius={[8, 8, 0, 0]} animationDuration={1000}>
+                {data.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill="#fbbf24" />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+      )}
+    </div>
+  );
+});
+
+RevenueChart.displayName = 'RevenueChart';
+
+const BookingsChart = memo(({ data }: { data: typeof bookingsChartData }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
+
+  return (
+    <div className="h-64 relative">
+      {!isLoaded ? (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <CardSkeleton className="w-full h-full" />
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={transitions.smooth}
+          className="h-full"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" opacity={0.3} />
+              <XAxis 
+                dataKey="day" 
+                stroke="#a0a0a0"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis 
+                stroke="#a0a0a0"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#202020',
+                  border: '1px solid #3a3a3a',
+                  borderRadius: '8px',
+                  color: '#f5f5f5',
+                }}
+                labelStyle={{ color: '#f5f5f5' }}
+                formatter={(value: number) => [`${value}`, 'Bookings']}
+                animationDuration={200}
+              />
+              <Bar dataKey="bookings" radius={[8, 8, 0, 0]} animationDuration={1000}>
+                {data.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill="#fbbf24" />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+      )}
+    </div>
+  );
+});
+
+BookingsChart.displayName = 'BookingsChart';
+
+// Memoized stat card component
+const StatCard = memo(({ stat, index }: { stat: typeof statsCards[0]; index: number }) => {
+  const Icon = stat.icon;
+  const isPositive = stat.change >= 0;
+  
+  // Parse numeric value for animation
+  const numericValue = useMemo(() => {
+    const match = stat.value.match(/[\d,]+/);
+    return match ? parseInt(match[0].replace(/,/g, '')) : 0;
+  }, [stat.value]);
+  
+  const animatedValue = useCountUp(numericValue, { duration: 1500 });
+  const displayValue = stat.value.includes('₹') 
+    ? `₹${animatedValue.toLocaleString()}` 
+    : stat.value.replace(/[\d,]+/, animatedValue.toLocaleString());
+
+  return (
+    <motion.div
+      variants={staggerItem}
+      initial="hidden"
+      animate="visible"
+      className="bg-gradient-to-br from-card to-card/80 border border-border rounded-xl p-4 space-y-3 min-h-[120px] flex flex-col justify-between touch-manipulation active:scale-[0.98]"
+    >
+      <div className="flex items-center justify-between">
+        <div className="p-2 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+          <Icon className="w-5 h-5 text-primary" />
+        </div>
+        <motion.div
+          className={cn(
+            'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold',
+            isPositive ? 'bg-green-400/20 text-green-400' : 'bg-red-400/20 text-red-400'
+          )}
+          animate={isPositive ? { scale: [1, 1.1, 1] } : {}}
+          transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+        >
+          {isPositive ? (
+            <ArrowUp className="w-3 h-3" />
+          ) : (
+            <ArrowDown className="w-3 h-3" />
+          )}
+          {Math.abs(stat.change).toFixed(1)}%
+        </motion.div>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground mb-1 font-medium">{stat.title}</p>
+        <motion.p
+          key={animatedValue}
+          initial={{ scale: 1.1 }}
+          animate={{ scale: 1 }}
+          transition={transitions.quick}
+          className="text-2xl font-bold text-foreground"
+        >
+          {displayValue}
+        </motion.p>
+      </div>
+    </motion.div>
+  );
+});
+
+StatCard.displayName = 'StatCard';
+
 export function VendorAnalytics() {
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
   const timeRangeRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const tabContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const activeButton = timeRangeRefs.current[timeRange];
@@ -106,9 +298,9 @@ export function VendorAnalytics() {
     }
   }, [timeRange]);
 
-  const data = mockAnalytics[timeRange];
+  const data = useMemo(() => mockAnalytics[timeRange], [timeRange]);
 
-  const statsCards = [
+  const statsCards = useMemo(() => [
     {
       title: 'Total Revenue',
       value: `₹${data.revenue.current.toLocaleString()}`,
@@ -133,7 +325,26 @@ export function VendorAnalytics() {
       change: data.averageOrder.change,
       icon: TrendingUp,
     },
-  ];
+  ], [data]);
+
+  // Swipe handlers for time range navigation
+  const timeRangeSwipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      const ranges: TimeRange[] = ['today', 'week', 'month', 'year'];
+      const currentIndex = ranges.indexOf(timeRange);
+      if (currentIndex < ranges.length - 1) {
+        setTimeRange(ranges[currentIndex + 1]);
+      }
+    },
+    onSwipeRight: () => {
+      const ranges: TimeRange[] = ['today', 'week', 'month', 'year'];
+      const currentIndex = ranges.indexOf(timeRange);
+      if (currentIndex > 0) {
+        setTimeRange(ranges[currentIndex - 1]);
+      }
+    },
+    threshold: 50,
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
@@ -141,17 +352,18 @@ export function VendorAnalytics() {
       <div className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="px-4 py-3">
           {/* Time Range Selector */}
-          <div className="relative">
-            <div className="flex gap-6 overflow-x-auto scrollbar-hide">
+          <div className="relative" ref={tabContainerRef} {...timeRangeSwipeHandlers}>
+            <div className="flex gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
               {(['today', 'week', 'month', 'year'] as TimeRange[]).map((range) => {
                 const isActive = timeRange === range;
                 return (
-                  <button
+                  <motion.button
                     key={range}
                     ref={(el) => { timeRangeRefs.current[range] = el; }}
                     onClick={() => setTimeRange(range)}
+                    whileTap={{ scale: 0.95 }}
                     className={cn(
-                      'relative px-2 py-2.5 text-sm font-medium whitespace-nowrap transition-colors',
+                      'relative px-2 py-2.5 min-h-[44px] text-sm font-medium whitespace-nowrap transition-colors touch-manipulation snap-center',
                       isActive
                         ? 'text-primary'
                         : 'text-muted-foreground hover:text-foreground'
@@ -162,14 +374,10 @@ export function VendorAnalytics() {
                       <motion.div
                         layoutId="activeTimeRange"
                         className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
-                        transition={{
-                          type: 'tween',
-                          ease: [0.4, 0, 0.2, 1],
-                          duration: 0.4,
-                        }}
+                        transition={transitions.smooth}
                       />
                     )}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -181,39 +389,16 @@ export function VendorAnalytics() {
 
       <div className="px-4 py-6 space-y-6">
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          {statsCards.map((stat, index) => {
-            const Icon = stat.icon;
-            const isPositive = stat.change >= 0;
-            return (
-              <div
-                key={index}
-                className="bg-card border border-border rounded-xl p-4 space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className={cn(
-                    'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold',
-                    isPositive ? 'bg-green-400/20 text-green-400' : 'bg-red-400/20 text-red-400'
-                  )}>
-                    {isPositive ? (
-                      <ArrowUp className="w-3 h-3" />
-                    ) : (
-                      <ArrowDown className="w-3 h-3" />
-                    )}
-                    {Math.abs(stat.change).toFixed(1)}%
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1 font-medium">{stat.title}</p>
-                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 gap-4"
+        >
+          {statsCards.map((stat, index) => (
+            <StatCard key={index} stat={stat} index={index} />
+          ))}
+        </motion.div>
 
         {/* Revenue Chart */}
         <div className="bg-card border border-border rounded-xl p-5">
@@ -224,42 +409,7 @@ export function VendorAnalytics() {
             </div>
             <TrendingUp className="w-5 h-5 text-primary" />
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" opacity={0.3} />
-                <XAxis 
-                  dataKey="day" 
-                  stroke="#a0a0a0"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis 
-                  stroke="#a0a0a0"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `₹${value}`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#202020',
-                    border: '1px solid #3a3a3a',
-                    borderRadius: '8px',
-                    color: '#f5f5f5',
-                  }}
-                  labelStyle={{ color: '#f5f5f5' }}
-                  formatter={(value: number) => [`₹${value}`, 'Revenue']}
-                />
-                <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
-                  {revenueChartData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill="#fbbf24" />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <RevenueChart data={revenueChartData} />
         </div>
 
         {/* Bookings Chart */}
@@ -271,56 +421,39 @@ export function VendorAnalytics() {
             </div>
             <Calendar className="w-5 h-5 text-primary" />
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={bookingsChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" opacity={0.3} />
-                <XAxis 
-                  dataKey="day" 
-                  stroke="#a0a0a0"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis 
-                  stroke="#a0a0a0"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#202020',
-                    border: '1px solid #3a3a3a',
-                    borderRadius: '8px',
-                    color: '#f5f5f5',
-                  }}
-                  labelStyle={{ color: '#f5f5f5' }}
-                  formatter={(value: number) => [`${value}`, 'Bookings']}
-                />
-                <Bar dataKey="bookings" radius={[8, 8, 0, 0]}>
-                  {bookingsChartData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill="#fbbf24" />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <BookingsChart data={bookingsChartData} />
         </div>
 
         {/* Performance Metrics */}
-        <div className="bg-card border border-border rounded-xl p-5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={transitions.smooth}
+          className="bg-card border border-border rounded-xl p-5"
+        >
           <div className="flex items-center gap-2 mb-4">
-            <Target className="w-5 h-5 text-primary" />
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 2 }}
+            >
+              <Target className="w-5 h-5 text-primary" />
+            </motion.div>
             <h2 className="text-lg font-semibold text-foreground">Performance Metrics</h2>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 gap-4"
+          >
             {performanceMetrics.map((metric, index) => {
               const Icon = metric.icon;
+              const animatedValue = useCountUp(metric.value, { duration: 1500, decimals: 1 });
               return (
-                <div
+                <motion.div
                   key={index}
-                  className="bg-card border border-border rounded-lg p-4"
+                  variants={staggerItem}
+                  className="bg-card border border-border rounded-lg p-4 touch-manipulation active:scale-[0.98]"
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Icon className="w-4 h-4 text-primary" />
@@ -328,32 +461,58 @@ export function VendorAnalytics() {
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-foreground">{metric.value}%</span>
+                      <motion.span
+                        key={animatedValue}
+                        initial={{ scale: 1.1 }}
+                        animate={{ scale: 1 }}
+                        transition={transitions.quick}
+                        className="text-lg font-bold text-foreground"
+                      >
+                        {animatedValue.toFixed(1)}%
+                      </motion.span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${metric.value}%` }}
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${metric.value}%` }}
+                        transition={{ ...transitions.smooth, delay: index * 0.1 }}
                       />
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Top Services */}
-        <div className="bg-card border border-border rounded-xl p-5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={transitions.smooth}
+          className="bg-card border border-border rounded-xl p-5"
+        >
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-primary" />
+            <motion.div
+              animate={{ y: [0, -4, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <TrendingUp className="w-5 h-5 text-primary" />
+            </motion.div>
             <h2 className="text-lg font-semibold text-foreground">Top Services</h2>
           </div>
-          <div className="space-y-3">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="space-y-3"
+          >
             {topServices.map((item, index) => (
-              <div
+              <motion.div
                 key={index}
-                className="p-4 bg-muted/20 rounded-lg border border-border hover:border-primary/50 transition-colors"
+                variants={staggerItem}
+                className="p-4 bg-muted/20 rounded-lg border border-border hover:border-primary/50 transition-all touch-manipulation active:scale-[0.98] hover:-translate-y-0.5"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
@@ -365,27 +524,50 @@ export function VendorAnalytics() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-primary">{item.percentage}%</p>
+                    <motion.p
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                      className="text-sm font-bold text-primary"
+                    >
+                      {item.percentage}%
+                    </motion.p>
                   </div>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${item.percentage}%` }}
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${item.percentage}%` }}
+                    transition={{ ...transitions.smooth, delay: index * 0.1 }}
                   />
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Performance Summary */}
-        <div className="bg-card border border-border rounded-xl p-5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={transitions.smooth}
+          className="bg-card border border-border rounded-xl p-5"
+        >
           <div className="flex items-center gap-2 mb-4">
-            <Target className="w-5 h-5 text-primary" />
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 2 }}
+            >
+              <Target className="w-5 h-5 text-primary" />
+            </motion.div>
             <h2 className="text-lg font-semibold text-foreground">Performance Summary</h2>
           </div>
-          <div className="space-y-4">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="space-y-4"
+          >
             {[
               { label: 'Completion Rate', value: '94.5%', icon: CheckCircle2 },
               { label: 'Cancellation Rate', value: '3.2%', icon: XCircle },
@@ -395,20 +577,21 @@ export function VendorAnalytics() {
             ].map((item, index) => {
               const Icon = item.icon;
               return (
-                <div
+                <motion.div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors"
+                  variants={staggerItem}
+                  className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/30 transition-all touch-manipulation active:scale-[0.98]"
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="w-4 h-4 text-primary" />
                     <span className="text-sm text-foreground">{item.label}</span>
                   </div>
                   <span className="text-sm font-bold text-foreground">{item.value}</span>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );

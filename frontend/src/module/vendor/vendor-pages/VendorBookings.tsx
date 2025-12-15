@@ -1,7 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
-import { Calendar, Clock, User, MapPin, IndianRupee, CheckCircle2, XCircle, AlertCircle, Phone, Mail, Search, Star, MessageSquare, Eye } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
+import { Calendar, Clock, User, MapPin, IndianRupee, CheckCircle2, XCircle, AlertCircle, Phone, Mail, Search, Star, MessageSquare, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { staggerContainer, staggerItem, transitions } from '@/lib/animations';
+import { useSwipe } from '@/lib/touch';
+import { useCountUp } from '@/hooks/useCountUp';
+import { ListItemSkeleton } from '@/components/ui/skeleton';
 
 type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
 type BookingTab = 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
@@ -94,11 +98,244 @@ const mockBookings: Booking[] = [
   },
 ];
 
+// Helper functions for status
+const getStatusIcon = (status: BookingStatus) => {
+  switch (status) {
+    case 'confirmed':
+      return <CheckCircle2 className="w-4 h-4 text-green-400" />;
+    case 'pending':
+      return <AlertCircle className="w-4 h-4 text-yellow-400" />;
+    case 'completed':
+      return <CheckCircle2 className="w-4 h-4 text-blue-400" />;
+    case 'cancelled':
+      return <XCircle className="w-4 h-4 text-red-400" />;
+  }
+};
+
+const getStatusColor = (status: BookingStatus) => {
+  switch (status) {
+    case 'confirmed':
+      return 'bg-green-400/20 text-green-400 border-green-400/30';
+    case 'pending':
+      return 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30';
+    case 'completed':
+      return 'bg-blue-400/20 text-blue-400 border-blue-400/30';
+    case 'cancelled':
+      return 'bg-red-400/20 text-red-400 border-red-400/30';
+  }
+};
+
+// Memoized booking card component
+const BookingCard = memo(({ 
+  booking, 
+  onSelect, 
+  onStatusChange 
+}: { 
+  booking: Booking; 
+  onSelect: () => void;
+  onStatusChange: (id: string, status: BookingStatus) => void;
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      if (booking.status === 'pending') {
+        onStatusChange(booking.id, 'cancelled');
+      }
+    },
+    threshold: 50,
+  });
+
+  return (
+    <motion.div
+      variants={staggerItem}
+      initial="hidden"
+      animate="visible"
+      {...swipeHandlers}
+      className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4 hover:border-primary/50 transition-all cursor-pointer touch-manipulation active:scale-[0.98] shadow-sm hover:shadow-md"
+      onClick={onSelect}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+          <motion.div 
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-lg sm:text-xl shrink-0 min-w-[44px] min-h-[44px]"
+            whileHover={{ scale: 1.1 }}
+            transition={transitions.quick}
+          >
+            {booking.customerName.charAt(0)}
+          </motion.div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
+              <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">{booking.customerName}</h3>
+              {booking.status === 'completed' && booking.rating && (
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                  <span className="text-xs font-medium text-foreground">{booking.rating}</span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">{booking.customerPhone}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <motion.div
+            className={cn(
+              'px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border flex items-center gap-1 sm:gap-1.5 text-xs font-medium min-h-[32px]',
+              getStatusColor(booking.status)
+            )}
+            animate={booking.status === 'pending' ? { 
+              scale: [1, 1.05, 1],
+            } : {}}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            {getStatusIcon(booking.status)}
+            <span className="hidden sm:inline">{booking.status}</span>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Service Details */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
+          <span className="font-medium text-foreground truncate">{booking.service}</span>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground flex-wrap">
+          <span className="flex items-center gap-1 sm:gap-1.5">
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="whitespace-nowrap">{booking.date} • {booking.time}</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3 shrink-0" />
+            {booking.duration}
+          </span>
+        </div>
+        {booking.address && (
+          <div className="flex items-start gap-2 text-xs sm:text-sm">
+            <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <span className="text-foreground break-words">{booking.address}</span>
+          </div>
+        )}
+        {booking.notes && (
+          <div className="flex items-start gap-2 text-xs sm:text-sm bg-muted/30 rounded-lg p-2">
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <span className="text-foreground break-words">{booking.notes}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Expandable Details */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={transitions.smooth}
+            className="overflow-hidden"
+          >
+            <div className="pt-3 border-t border-border space-y-2">
+              {booking.customerEmail && (
+                <div className="flex items-center gap-2 text-xs sm:text-sm">
+                  <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-foreground">{booking.customerEmail}</span>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Amount and Actions */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-border">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+          <span className="text-lg sm:text-xl font-bold text-primary">₹{booking.amount}</span>
+          <span className="text-xs text-muted-foreground">
+            ({booking.paymentMethod})
+          </span>
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          {booking.status === 'pending' && (
+            <>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStatusChange(booking.id, 'confirmed');
+                }}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] bg-green-400/10 text-green-400 border border-green-400/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-400/20 transition-colors touch-manipulation"
+              >
+                Accept
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStatusChange(booking.id, 'cancelled');
+                }}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] bg-red-400/10 text-red-400 border border-red-400/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-red-400/20 transition-colors touch-manipulation"
+              >
+                Reject
+              </motion.button>
+            </>
+          )}
+          {booking.status === 'confirmed' && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onStatusChange(booking.id, 'completed');
+              }}
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] bg-primary/10 text-primary border border-primary/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-primary/20 transition-colors touch-manipulation"
+            >
+              Mark Complete
+            </motion.button>
+          )}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            className="p-2 min-w-[44px] min-h-[44px] bg-card border border-border rounded-lg hover:border-primary/50 transition-colors shrink-0 touch-manipulation flex items-center justify-center"
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-foreground" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-foreground" />
+            )}
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+            className="p-2 min-w-[44px] min-h-[44px] bg-card border border-border rounded-lg hover:border-primary/50 transition-colors shrink-0 touch-manipulation"
+          >
+            <Eye className="w-4 h-4 text-foreground" />
+          </motion.button>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
+BookingCard.displayName = 'BookingCard';
+
 export function VendorBookings() {
   const [activeTab, setActiveTab] = useState<BookingTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
+  const tabContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const activeButton = tabRefs.current[activeTab];
@@ -111,32 +348,6 @@ export function VendorBookings() {
     }
   }, [activeTab]);
 
-  const getStatusIcon = (status: BookingStatus) => {
-    switch (status) {
-      case 'confirmed':
-        return <CheckCircle2 className="w-4 h-4 text-green-400" />;
-      case 'pending':
-        return <AlertCircle className="w-4 h-4 text-yellow-400" />;
-      case 'completed':
-        return <CheckCircle2 className="w-4 h-4 text-blue-400" />;
-      case 'cancelled':
-        return <XCircle className="w-4 h-4 text-red-400" />;
-    }
-  };
-
-  const getStatusColor = (status: BookingStatus) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-400/20 text-green-400 border-green-400/30';
-      case 'pending':
-        return 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30';
-      case 'completed':
-        return 'bg-blue-400/20 text-blue-400 border-blue-400/30';
-      case 'cancelled':
-        return 'bg-red-400/20 text-red-400 border-red-400/30';
-    }
-  };
-
   const filteredBookings = mockBookings.filter(booking => {
     const matchesTab = activeTab === 'all' || booking.status === activeTab;
     const matchesSearch = searchQuery === '' || 
@@ -146,12 +357,31 @@ export function VendorBookings() {
     return matchesTab && matchesSearch;
   });
 
-  const handleStatusChange = (bookingId: string, newStatus: BookingStatus) => {
+  const handleStatusChange = useCallback((bookingId: string, newStatus: BookingStatus) => {
     // Handle status change
     console.log('Status change', bookingId, newStatus);
-  };
+  }, []);
 
-  const stats = {
+  // Swipe handlers for tab navigation
+  const tabSwipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      const tabs: BookingTab[] = ['all', 'pending', 'confirmed', 'completed', 'cancelled'];
+      const currentIndex = tabs.indexOf(activeTab);
+      if (currentIndex < tabs.length - 1) {
+        setActiveTab(tabs[currentIndex + 1]);
+      }
+    },
+    onSwipeRight: () => {
+      const tabs: BookingTab[] = ['all', 'pending', 'confirmed', 'completed', 'cancelled'];
+      const currentIndex = tabs.indexOf(activeTab);
+      if (currentIndex > 0) {
+        setActiveTab(tabs[currentIndex - 1]);
+      }
+    },
+    threshold: 50,
+  });
+
+  const stats = useMemo(() => ({
     total: mockBookings.length,
     pending: mockBookings.filter(b => b.status === 'pending').length,
     confirmed: mockBookings.filter(b => b.status === 'confirmed').length,
@@ -159,7 +389,9 @@ export function VendorBookings() {
     revenue: mockBookings
       .filter(b => b.status === 'completed' || b.status === 'confirmed')
       .reduce((sum, b) => sum + b.amount, 0),
-  };
+  }), []);
+
+  const animatedRevenue = useCountUp(stats.revenue, { duration: 1500 });
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
@@ -182,39 +414,98 @@ export function VendorBookings() {
 
       <div className="px-3 sm:px-4 py-4 sm:py-6">
         {/* Stats Banner */}
-        <div className="bg-card border border-border rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={transitions.smooth}
+          className="bg-gradient-to-br from-card to-card/80 border border-border rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-sm"
+        >
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-            <div className="text-center">
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={transitions.spring}
+              className="text-center"
+            >
               <p className="text-xs text-muted-foreground mb-1">Total</p>
-              <p className="text-base sm:text-lg font-bold text-foreground">{stats.total}</p>
-            </div>
-            <div className="text-center">
+              <motion.p
+                key={stats.total}
+                initial={{ scale: 1.1 }}
+                animate={{ scale: 1 }}
+                transition={transitions.quick}
+                className="text-base sm:text-lg font-bold text-foreground"
+              >
+                {stats.total}
+              </motion.p>
+            </motion.div>
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ ...transitions.spring, delay: 0.1 }}
+              className="text-center"
+            >
               <p className="text-xs text-muted-foreground mb-1">Pending</p>
-              <p className="text-base sm:text-lg font-bold text-yellow-400">{stats.pending}</p>
-            </div>
-            <div className="text-center">
+              <motion.p
+                key={stats.pending}
+                initial={{ scale: 1.1 }}
+                animate={{ scale: 1 }}
+                transition={transitions.quick}
+                className="text-base sm:text-lg font-bold text-yellow-400"
+              >
+                {stats.pending}
+              </motion.p>
+            </motion.div>
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ ...transitions.spring, delay: 0.2 }}
+              className="text-center"
+            >
               <p className="text-xs text-muted-foreground mb-1">Confirmed</p>
-              <p className="text-base sm:text-lg font-bold text-green-400">{stats.confirmed}</p>
-            </div>
-            <div className="text-center">
+              <motion.p
+                key={stats.confirmed}
+                initial={{ scale: 1.1 }}
+                animate={{ scale: 1 }}
+                transition={transitions.quick}
+                className="text-base sm:text-lg font-bold text-green-400"
+              >
+                {stats.confirmed}
+              </motion.p>
+            </motion.div>
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ ...transitions.spring, delay: 0.3 }}
+              className="text-center"
+            >
               <p className="text-xs text-muted-foreground mb-1">Revenue</p>
-              <p className="text-base sm:text-lg font-bold text-primary">₹{stats.revenue}</p>
-            </div>
+              <motion.p
+                key={animatedRevenue}
+                initial={{ scale: 1.1 }}
+                animate={{ scale: 1 }}
+                transition={transitions.quick}
+                className="text-base sm:text-lg font-bold text-primary"
+              >
+                ₹{animatedRevenue.toLocaleString()}
+              </motion.p>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Tabs */}
-        <div className="relative mb-4 sm:mb-6">
-          <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scrollbar-hide -mx-3 sm:-mx-4 px-3 sm:px-4">
+        <div className="relative mb-4 sm:mb-6" ref={tabContainerRef} {...tabSwipeHandlers}>
+          <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 scrollbar-hide -mx-3 sm:-mx-4 px-3 sm:px-4 snap-x snap-mandatory">
             {(['all', 'pending', 'confirmed', 'completed', 'cancelled'] as BookingTab[]).map((tab) => {
               const isActive = activeTab === tab;
+              const count = tab !== 'all' ? mockBookings.filter(b => b.status === tab).length : 0;
               return (
-                <button
+                <motion.button
                   key={tab}
                   ref={(el) => { tabRefs.current[tab] = el; }}
                   onClick={() => setActiveTab(tab)}
+                  whileTap={{ scale: 0.95 }}
                   className={cn(
-                    'relative px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors',
+                    'relative px-2 sm:px-3 py-2.5 min-h-[44px] text-xs sm:text-sm font-medium whitespace-nowrap transition-colors touch-manipulation snap-center',
                     isActive
                       ? 'text-primary'
                       : 'text-muted-foreground hover:text-foreground'
@@ -222,27 +513,27 @@ export function VendorBookings() {
                 >
                   <span className="flex items-center gap-1.5 sm:gap-2">
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    {tab !== 'all' && (
-                      <span className={cn(
-                        "px-1.5 py-0.5 rounded-full text-xs font-medium",
-                        isActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
-                      )}>
-                        {mockBookings.filter(b => b.status === tab).length}
-                      </span>
+                    {tab !== 'all' && count > 0 && (
+                      <motion.span
+                        className={cn(
+                          "px-1.5 py-0.5 rounded-full text-xs font-medium min-w-[24px] text-center",
+                          isActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                        )}
+                        animate={isActive ? { scale: [1, 1.1, 1] } : {}}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {count}
+                      </motion.span>
                     )}
                   </span>
                   {isActive && (
                     <motion.div
                       layoutId="activeBookingTab"
                       className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
-                      transition={{
-                        type: 'tween',
-                        ease: [0.4, 0, 0.2, 1],
-                        duration: 0.4,
-                      }}
+                      transition={transitions.smooth}
                     />
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -251,138 +542,40 @@ export function VendorBookings() {
         </div>
 
         {/* Bookings List */}
-        {filteredBookings.length > 0 ? (
+        {isLoading ? (
           <div className="space-y-3 sm:space-y-4">
-            {filteredBookings.map((booking) => (
-              <div
-                key={booking.id}
-                onClick={() => setSelectedBooking(booking)}
-                className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4 hover:border-primary/50 transition-colors cursor-pointer"
-              >
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg sm:text-xl shrink-0">
-                        {booking.customerName.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
-                          <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">{booking.customerName}</h3>
-                          {booking.status === 'completed' && booking.rating && (
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                              <span className="text-xs font-medium text-foreground">{booking.rating}</span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{booking.customerPhone}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                      <div className={cn(
-                        'px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border flex items-center gap-1 sm:gap-1.5 text-xs font-medium',
-                        getStatusColor(booking.status)
-                      )}>
-                        {getStatusIcon(booking.status)}
-                        <span className="hidden sm:inline">{booking.status}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Service Details */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs sm:text-sm">
-                      <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium text-foreground truncate">{booking.service}</span>
-                    </div>
-                    <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground flex-wrap">
-                      <span className="flex items-center gap-1 sm:gap-1.5">
-                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                        <span className="whitespace-nowrap">{booking.date} • {booking.time}</span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 shrink-0" />
-                        {booking.duration}
-                      </span>
-                    </div>
-                    {booking.address && (
-                      <div className="flex items-start gap-2 text-xs sm:text-sm">
-                        <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 shrink-0" />
-                        <span className="text-foreground break-words">{booking.address}</span>
-                      </div>
-                    )}
-                    {booking.notes && (
-                      <div className="flex items-start gap-2 text-xs sm:text-sm bg-muted/30 rounded-lg p-2">
-                        <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 shrink-0" />
-                        <span className="text-foreground break-words">{booking.notes}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Amount and Actions */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-border">
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
-                      <span className="text-lg sm:text-xl font-bold text-primary">₹{booking.amount}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({booking.paymentMethod})
-                      </span>
-                    </div>
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    {booking.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(booking.id, 'confirmed');
-                          }}
-                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-400/10 text-green-400 border border-green-400/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-400/20 transition-colors"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange(booking.id, 'cancelled');
-                          }}
-                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-red-400/10 text-red-400 border border-red-400/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-red-400/20 transition-colors"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {booking.status === 'confirmed' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange(booking.id, 'completed');
-                        }}
-                        className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-primary/10 text-primary border border-primary/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-primary/20 transition-colors"
-                      >
-                        Mark Complete
-                      </button>
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedBooking(booking);
-                      }}
-                      className="p-2 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors shrink-0"
-                    >
-                      <Eye className="w-4 h-4 text-foreground" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+            {[1, 2, 3].map((i) => (
+              <ListItemSkeleton key={i} />
             ))}
           </div>
+        ) : filteredBookings.length > 0 ? (
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="space-y-3 sm:space-y-4"
+          >
+            {filteredBookings.map((booking) => (
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onSelect={() => setSelectedBooking(booking)}
+                onStatusChange={handleStatusChange}
+              />
+            ))}
+          </motion.div>
         ) : (
-          <div className="text-center py-12">
-              <Calendar className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={transitions.smooth}
+            className="text-center py-12"
+          >
+            <Calendar className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
             <p className="text-muted-foreground text-xs sm:text-sm">
               No {activeTab === 'all' ? '' : activeTab} bookings found
             </p>
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -415,18 +608,30 @@ export function VendorBookings() {
             >
               {/* Drag Handle */}
               <div className="flex justify-center pt-2.5 pb-2 sm:hidden">
-                <div className="w-12 h-1 bg-muted-foreground/40 rounded-full" />
+                <motion.div
+                  className="w-12 h-1.5 bg-muted-foreground/40 rounded-full cursor-grab active:cursor-grabbing"
+                  drag="y"
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.y > 100) {
+                      setSelectedBooking(null);
+                    }
+                  }}
+                />
               </div>
 
               {/* Header */}
               <div className="flex items-center justify-between px-4 pb-3 border-b border-border">
                 <h2 className="text-base sm:text-lg font-bold text-foreground">Booking Details</h2>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => setSelectedBooking(null)}
-                  className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                  className="p-2 min-w-[44px] min-h-[44px] hover:bg-muted rounded-lg transition-colors touch-manipulation flex items-center justify-center"
+                  aria-label="Close"
                 >
                   ×
-                </button>
+                </motion.button>
               </div>
 
               {/* Content */}
@@ -505,27 +710,33 @@ export function VendorBookings() {
                 <div className="flex gap-2 pt-2">
                   {selectedBooking.status === 'pending' && (
                     <>
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => handleStatusChange(selectedBooking.id, 'confirmed')}
-                        className="flex-1 h-11 bg-green-400/10 text-green-400 border border-green-400/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-green-400/20 transition-colors"
+                        className="flex-1 h-11 min-h-[44px] bg-green-400/10 text-green-400 border border-green-400/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-green-400/20 transition-colors touch-manipulation"
                       >
                         Accept
-                      </button>
-                      <button
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => handleStatusChange(selectedBooking.id, 'cancelled')}
-                        className="flex-1 h-11 bg-red-400/10 text-red-400 border border-red-400/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-red-400/20 transition-colors"
+                        className="flex-1 h-11 min-h-[44px] bg-red-400/10 text-red-400 border border-red-400/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-red-400/20 transition-colors touch-manipulation"
                       >
                         Reject
-                      </button>
+                      </motion.button>
                     </>
                   )}
                   {selectedBooking.status === 'confirmed' && (
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleStatusChange(selectedBooking.id, 'completed')}
-                      className="w-full h-11 bg-primary/10 text-primary border border-primary/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-primary/20 transition-colors"
+                      className="w-full h-11 min-h-[44px] bg-primary/10 text-primary border border-primary/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-primary/20 transition-colors touch-manipulation"
                     >
                       Mark Complete
-                    </button>
+                    </motion.button>
                   )}
                 </div>
               </div>
