@@ -11,7 +11,7 @@ import { useTouchFeedback } from '@/lib/touch';
 // Memoized stat card component
 const ProfileStatCard = memo(({ item, index }: { item: typeof achievements[0] | typeof stats[0]; index: number }) => {
   const Icon = item.icon;
-  const touchFeedback = useTouchFeedback();
+  const { isActive, ...touchHandlers } = useTouchFeedback();
   
   // Parse numeric value if possible
   const numericValue = useMemo(() => {
@@ -30,7 +30,7 @@ const ProfileStatCard = memo(({ item, index }: { item: typeof achievements[0] | 
       initial="hidden"
       animate="visible"
       className="bg-gradient-to-br from-card to-card/80 border border-border rounded-xl p-4 min-h-[100px] flex flex-col justify-between touch-manipulation active:scale-[0.98]"
-      {...touchFeedback}
+      {...touchHandlers}
     >
       <div className="flex items-center gap-2.5 mb-2">
         <div className="p-2 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
@@ -96,25 +96,25 @@ export function VendorProfile() {
       icon: Settings,
       label: 'Settings',
       description: 'Manage app settings',
-      onClick: () => console.log('Settings clicked'),
+      onClick: () => navigate('/vendor/settings'),
     },
     {
       icon: Bell,
       label: 'Notifications',
       description: 'Notification preferences',
-      onClick: () => console.log('Notifications clicked'),
+      onClick: () => navigate('/vendor/notifications'),
     },
     {
       icon: FileText,
       label: 'Terms & Conditions',
       description: 'Read terms and conditions',
-      onClick: () => console.log('Terms clicked'),
+      onClick: () => navigate('/vendor/terms'),
     },
     {
       icon: Shield,
       label: 'Privacy Policy',
       description: 'Privacy and data policy',
-      onClick: () => console.log('Privacy clicked'),
+      onClick: () => navigate('/vendor/privacy'),
     },
     {
       icon: LogOut,

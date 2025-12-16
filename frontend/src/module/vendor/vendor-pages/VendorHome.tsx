@@ -81,7 +81,7 @@ const searchTerms = [
 // Memoized stat card component for performance
 const StatCard = memo(({ stat, index }: { stat: typeof statsCards[0]; index: number }) => {
   const Icon = stat.icon;
-  const touchFeedback = useTouchFeedback();
+  const { isActive, ...touchHandlers } = useTouchFeedback();
   
   // Parse numeric value for animation
   const numericValue = useMemo(() => {
@@ -106,7 +106,7 @@ const StatCard = memo(({ stat, index }: { stat: typeof statsCards[0]; index: num
         "min-h-[120px] flex flex-col justify-between"
       )}
       style={{ minHeight: '120px' }}
-      {...touchFeedback}
+      {...touchHandlers}
     >
       <div className="flex items-center justify-between">
         <div className="p-2.5 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">

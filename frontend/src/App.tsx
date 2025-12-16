@@ -17,6 +17,10 @@ import { VendorBookings } from './module/vendor/vendor-pages/VendorBookings'
 import { VendorBookingDetail } from './module/vendor/vendor-pages/VendorBookingDetail'
 import { VendorAnalytics } from './module/vendor/vendor-pages/VendorAnalytics'
 import { VendorProfile } from './module/vendor/vendor-pages/VendorProfile'
+import { VendorSettings } from './module/vendor/vendor-pages/VendorSettings'
+import { VendorNotifications } from './module/vendor/vendor-pages/VendorNotifications'
+import { VendorTermsConditions } from './module/vendor/vendor-pages/VendorTermsConditions'
+import { VendorPrivacyPolicy } from './module/vendor/vendor-pages/VendorPrivacyPolicy'
 import { VendorNavbar } from './module/vendor/vendor-components/VendorNavbar'
 import './App.css'
 
@@ -81,6 +85,10 @@ function AppContent() {
           <Route path="/vendor/bookings/:id" element={<VendorBookingDetail />} />
           <Route path="/vendor/analytics" element={<VendorAnalytics />} />
           <Route path="/vendor/profile" element={<VendorProfile />} />
+          <Route path="/vendor/settings" element={<VendorSettings />} />
+          <Route path="/vendor/notifications" element={<VendorNotifications />} />
+          <Route path="/vendor/terms" element={<VendorTermsConditions />} />
+          <Route path="/vendor/privacy" element={<VendorPrivacyPolicy />} />
         </Routes>
       </div>
     </div>
