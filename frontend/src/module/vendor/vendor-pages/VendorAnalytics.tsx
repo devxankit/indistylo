@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
 import { TrendingUp, IndianRupee, Users, Calendar, ArrowUp, ArrowDown, BarChart3, Target, Star, Clock, Activity, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend, LineChart, Line, Area, AreaChart } from 'recharts';
 import { staggerContainer, staggerItem, transitions } from '@/lib/animations';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useSwipe } from '@/lib/touch';
@@ -117,39 +117,60 @@ const RevenueChart = memo(({ data }: { data: typeof revenueChartData }) => {
           className="h-full"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" opacity={0.3} />
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#fbbf24" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" opacity={0.2} />
               <XAxis 
                 dataKey="day" 
                 stroke="#a0a0a0"
-                fontSize={12}
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
+                tickMargin={8}
               />
               <YAxis 
                 stroke="#a0a0a0"
-                fontSize={12}
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `₹${value}`}
+                tickMargin={8}
+                tickFormatter={(value) => `₹${(value / 1000).toFixed(1)}k`}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#202020',
+                  backgroundColor: '#1a1a1a',
                   border: '1px solid #3a3a3a',
-                  borderRadius: '8px',
+                  borderRadius: '12px',
                   color: '#f5f5f5',
+                  padding: '8px 12px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                 }}
-                labelStyle={{ color: '#f5f5f5' }}
-                formatter={(value: number) => [`₹${value}`, 'Revenue']}
+                labelStyle={{ 
+                  color: '#f5f5f5',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  marginBottom: '4px',
+                }}
+                formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Revenue']}
                 animationDuration={200}
+                cursor={{ stroke: '#fbbf24', strokeWidth: 2, strokeDasharray: '5 5' }}
               />
-              <Bar dataKey="revenue" radius={[8, 8, 0, 0]} animationDuration={1000}>
-                {data.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill="#fbbf24" />
-                ))}
-              </Bar>
-            </BarChart>
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#fbbf24"
+                strokeWidth={3}
+                fill="url(#revenueGradient)"
+                animationDuration={1500}
+                dot={{ fill: '#fbbf24', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#fbbf24', strokeWidth: 2, fill: '#1a1a1a' }}
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </motion.div>
       )}

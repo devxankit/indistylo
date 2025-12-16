@@ -153,9 +153,9 @@ export function VendorProfile() {
 
             {/* Vendor Info */}
             <div className="text-center">
-              <h1 className="text-sm font-medium font-size-2 text-foreground">
+              <h2 className="text-sm font-medium font-size-2 text-foreground">
                 {vendor.name}
-              </h1>
+              </h2>
               <p className="text-xs text-muted-foreground mt-1">
                 Member since {vendor.joinedDate}
               </p>
