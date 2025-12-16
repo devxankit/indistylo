@@ -21,6 +21,11 @@ import { VendorSettings } from './module/vendor/vendor-pages/VendorSettings'
 import { VendorNotifications } from './module/vendor/vendor-pages/VendorNotifications'
 import { VendorTermsConditions } from './module/vendor/vendor-pages/VendorTermsConditions'
 import { VendorPrivacyPolicy } from './module/vendor/vendor-pages/VendorPrivacyPolicy'
+import { VendorServices } from './module/vendor/vendor-pages/VendorServices'
+import { VendorCustomers } from './module/vendor/vendor-pages/VendorCustomers'
+import { VendorReviews } from './module/vendor/vendor-pages/VendorReviews'
+import { VendorSchedule } from './module/vendor/vendor-pages/VendorSchedule'
+import { VendorCustomerDetail } from './module/vendor/vendor-pages/VendorCustomerDetail'
 import { VendorNavbar } from './module/vendor/vendor-components/VendorNavbar'
 import './App.css'
 
@@ -84,6 +89,11 @@ function AppContent() {
           <Route path="/vendor/bookings" element={<VendorBookings />} />
           <Route path="/vendor/bookings/:id" element={<VendorBookingDetail />} />
           <Route path="/vendor/analytics" element={<VendorAnalytics />} />
+          <Route path="/vendor/services" element={<VendorServices />} />
+          <Route path="/vendor/customers" element={<VendorCustomers />} />
+          <Route path="/vendor/customers/:id" element={<VendorCustomerDetail />} />
+          <Route path="/vendor/reviews" element={<VendorReviews />} />
+          <Route path="/vendor/schedule" element={<VendorSchedule />} />
           <Route path="/vendor/profile" element={<VendorProfile />} />
           <Route path="/vendor/settings" element={<VendorSettings />} />
           <Route path="/vendor/notifications" element={<VendorNotifications />} />

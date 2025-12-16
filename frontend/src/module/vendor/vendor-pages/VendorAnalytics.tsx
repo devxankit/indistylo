@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
 import { TrendingUp, IndianRupee, Users, Calendar, ArrowUp, ArrowDown, BarChart3, Target, Star, Clock, Activity, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { staggerContainer, staggerItem, transitions } from '@/lib/animations';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useSwipe } from '@/lib/touch';
@@ -82,10 +82,10 @@ const bookingsChartData = [
 ];
 
 const topServices = [
-  { service: 'Haircut & Styling', bookings: 45, revenue: 22455, percentage: 35 },
-  { service: 'Hair Color & Treatment', bookings: 28, revenue: 36372, percentage: 58 },
-  { service: 'Facial Treatment', bookings: 32, revenue: 28768, percentage: 46 },
-  { service: 'Beard Trim', bookings: 38, revenue: 11362, percentage: 18 },
+  { service: 'Haircut & Styling', bookings: 45, revenue: 22455, percentage: 35, fill: '#fbbf24' },
+  { service: 'Hair Color & Treatment', bookings: 28, revenue: 36372, percentage: 58, fill: '#f59e0b' },
+  { service: 'Facial Treatment', bookings: 32, revenue: 28768, percentage: 46, fill: '#d97706' },
+  { service: 'Beard Trim', bookings: 38, revenue: 11362, percentage: 18, fill: '#b45309' },
 ];
 
 const performanceMetrics = [
@@ -500,8 +500,45 @@ export function VendorAnalytics() {
             >
               <TrendingUp className="w-5 h-5 text-primary" />
             </motion.div>
-            <h2 className="text-lg font-semibold text-foreground">Top Services</h2>
+            <h2 className="text-lg font-semibold text-foreground">Service Distribution</h2>
           </div>
+          
+          {/* Pie Chart */}
+          <div className="h-64 mb-6">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={topServices}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ service, percentage }) => `${service.split(' ')[0]} ${percentage}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="bookings"
+                  animationDuration={1000}
+                >
+                  {topServices.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#202020',
+                    border: '1px solid #3a3a3a',
+                    borderRadius: '8px',
+                    color: '#f5f5f5',
+                  }}
+                  formatter={(value: number, name: string, props: any) => [
+                    `${value} bookings (₹${props.payload.revenue.toLocaleString()})`,
+                    props.payload.service
+                  ]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <h3 className="text-sm font-semibold text-foreground mb-3">Service Breakdown</h3>
           <motion.div
             variants={staggerContainer}
             initial="hidden"

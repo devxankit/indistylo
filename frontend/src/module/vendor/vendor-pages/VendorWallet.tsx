@@ -193,21 +193,21 @@ export function VendorWallet() {
 
   const filteredTransactions = useMemo(() => 
     filter === 'all' 
-      ? transactions 
+    ? transactions 
       : transactions.filter(t => t.type === filter),
     [filter]
   );
 
   const totalEarnings = useMemo(() =>
     transactions
-      .filter(t => t.type === 'credit')
+    .filter(t => t.type === 'credit')
       .reduce((sum, t) => sum + t.amount, 0),
     []
   );
 
   const totalWithdrawals = useMemo(() =>
     transactions
-      .filter(t => t.type === 'debit')
+    .filter(t => t.type === 'debit')
       .reduce((sum, t) => sum + t.amount, 0),
     []
   );
@@ -231,17 +231,17 @@ export function VendorWallet() {
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
           
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
                 <motion.div
                   className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg"
                   animate={{ rotate: [0, 5, -5, 0] }}
                   transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
                 >
-                  <Wallet className="w-7 h-7 text-primary" />
+                <Wallet className="w-7 h-7 text-primary" />
                 </motion.div>
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">Total Balance</p>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">Total Balance</p>
                   <motion.p
                     key={animatedBalance}
                     initial={{ scale: 1.1 }}
@@ -251,9 +251,9 @@ export function VendorWallet() {
                   >
                     ₹{animatedBalance.toLocaleString()}
                   </motion.p>
-                </div>
               </div>
             </div>
+          </div>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
               <motion.div
@@ -261,7 +261,7 @@ export function VendorWallet() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ ...transitions.smooth, delay: 0.1 }}
               >
-                <p className="text-xs text-muted-foreground mb-1">IndiStylo Points</p>
+              <p className="text-xs text-muted-foreground mb-1">IndiStylo Points</p>
                 <motion.p
                   key={animatedPoints}
                   initial={{ scale: 1.1 }}
@@ -277,7 +277,7 @@ export function VendorWallet() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ ...transitions.smooth, delay: 0.2 }}
               >
-                <p className="text-xs text-muted-foreground mb-1">Available</p>
+              <p className="text-xs text-muted-foreground mb-1">Available</p>
                 <motion.p
                   key={animatedBalance}
                   initial={{ scale: 1.1 }}
@@ -344,7 +344,7 @@ export function VendorWallet() {
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 2 }}
             >
-              <CreditCard className="w-5 h-5 text-primary" />
+            <CreditCard className="w-5 h-5 text-primary" />
             </motion.div>
           </div>
           <div className="space-y-2">
@@ -437,7 +437,7 @@ export function VendorWallet() {
 
         {/* Transactions List */}
         {isLoading ? (
-          <div className="space-y-3">
+        <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <ListItemSkeleton key={i} />
             ))}
@@ -449,18 +449,18 @@ export function VendorWallet() {
             animate="visible"
             className="space-y-3"
           >
-            <AnimatePresence mode="popLayout">
-              {filteredTransactions.map((transaction) => (
+          <AnimatePresence mode="popLayout">
+            {filteredTransactions.map((transaction) => (
                 <TransactionCard
-                  key={transaction.id}
+                key={transaction.id}
                   transaction={transaction}
                   onSwipeLeft={() => {
                     // Handle swipe action
                     console.log('Swipe left on transaction', transaction.id);
                   }}
                 />
-              ))}
-            </AnimatePresence>
+            ))}
+          </AnimatePresence>
           </motion.div>
         )}
       </div>
@@ -474,8 +474,8 @@ export function VendorWallet() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={transitions.quick}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end"
-              onClick={() => setShowWithdrawModal(false)}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end"
+            onClick={() => setShowWithdrawModal(false)}
             />
             <motion.div
               initial={{ y: '100%' }}

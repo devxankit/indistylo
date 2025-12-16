@@ -89,7 +89,7 @@ export function VendorPrivacyPolicy() {
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </motion.button>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-foreground">Privacy Policy</h1>
+            <h2 className="text-lg font-bold text-foreground">Privacy Policy</h2>
             <p className="text-xs text-muted-foreground">Last updated: January 2024</p>
           </div>
         </div>

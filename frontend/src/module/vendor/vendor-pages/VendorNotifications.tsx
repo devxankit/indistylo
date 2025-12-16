@@ -168,7 +168,7 @@ export function VendorNotifications() {
               <ArrowLeft className="w-5 h-5 text-foreground" />
             </motion.button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold text-foreground">Notifications</h1>
+              <h2 className="text-lg font-bold text-foreground">Notifications</h2>
               <p className="text-xs text-muted-foreground">
                 {animatedUnreadCount} unread
               </p>
