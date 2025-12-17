@@ -3,14 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Bell,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
   Calendar,
   IndianRupee,
-  Users,
   Clock,
-  Filter,
   Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -239,7 +235,7 @@ export function VendorNotifications() {
             className="space-y-3"
           >
             <AnimatePresence>
-              {filteredNotifications.map((notification, index) => {
+              {filteredNotifications.map((notification) => {
                 const Icon = getNotificationIcon(notification.type);
                 const isUnread = notification.status === 'unread';
 

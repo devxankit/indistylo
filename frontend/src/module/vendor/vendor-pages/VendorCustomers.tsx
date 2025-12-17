@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   Search,
-  Filter,
   Phone,
   Mail,
   MapPin,
@@ -19,7 +18,6 @@ import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
 import { useCountUp } from "@/hooks/useCountUp";
 import { useCustomerStore, type Customer } from "../store/useCustomerStore";
-import { useTouchFeedback } from "@/lib/touch";
 
 const getStatusColor = (status: Customer["status"]) => {
   switch (status) {

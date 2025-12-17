@@ -115,7 +115,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     return get().customers.find((customer) => customer.id === id);
   },
   
-  getCustomerBookings: (customerId) => {
+  getCustomerBookings: (_customerId) => {
     // Mock booking history - in real app, this would come from bookings store
     // For now, return empty array or mock data
     return [];

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
-import { transitions, staggerContainer, staggerItem } from "@/lib/animations";
+import { transitions, staggerContainer } from "@/lib/animations";
 import { useScheduleStore } from "../store/useScheduleStore";
 import { DayScheduleCard } from "../vendor-components/DayScheduleCard";
 

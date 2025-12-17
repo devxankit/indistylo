@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Upload,
-  Image as ImageIcon,
   Plus,
   Trash2,
   IndianRupee,
@@ -13,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogBo
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Service, PricingTier } from "../store/useServiceStore";
-import { transitions } from "@/lib/animations";
 
 interface ServiceFormModalProps {
   open: boolean;
@@ -389,7 +387,7 @@ export function ServiceFormModal({
               </motion.button>
             </div>
             <AnimatePresence>
-              {formData.pricingTiers.map((tier, index) => (
+              {formData.pricingTiers.map((tier) => (
                 <motion.div
                   key={tier.id}
                   initial={{ opacity: 0, height: 0 }}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useCallback, memo } from "react";
 import {
   Phone,
   Building2,
@@ -15,7 +15,6 @@ import { useNavigate } from "react-router-dom";
 import { useVendorStore } from "../store/useVendorStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
-import { useTouchFeedback } from "@/lib/touch";
 
 type VendorType = "salon" | "freelancer" | "spa" | null;
 type AuthMode = "login" | "signup" | null;
@@ -413,7 +412,7 @@ export function VendorAuth() {
                 initial="hidden"
                 animate="visible"
                 className="space-y-3 mb-8">
-                {vendorTypeOptions.map((option, index) => {
+                {vendorTypeOptions.map((option) => {
                   const Icon = option.icon;
                   const isSelected = vendorType === option.type;
                   return (
@@ -615,7 +614,6 @@ export function VendorAuth() {
                       )}
                       autoFocus={index === 0}
                       whileFocus={{ scale: 1.05 }}
-                      transition={transitions.quick}
                       animate={
                         otpError && index === otp.length - 1
                           ? {
@@ -623,7 +621,7 @@ export function VendorAuth() {
                             }
                           : {}
                       }
-                      transition={{ duration: 0.5 }}
+                      transition={otpError && index === otp.length - 1 ? { duration: 0.5 } : transitions.quick}
                     />
                   ))}
                 </motion.div>

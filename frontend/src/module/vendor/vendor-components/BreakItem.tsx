@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
-import { Trash2, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
 import type { Break } from "../store/useScheduleStore";
 import { TimePicker } from "./TimePicker";
 

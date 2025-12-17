@@ -2,9 +2,6 @@ import { useState, useMemo, useCallback } from "react";
 import {
   Search,
   Star,
-  Filter,
-  Calendar,
-  User,
   ArrowLeft,
   ThumbsUp,
   ThumbsDown,

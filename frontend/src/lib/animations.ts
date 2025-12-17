@@ -1,13 +1,17 @@
-import type { Variants } from 'framer-motion';
+import type { Variants, Transition } from 'framer-motion';
 
 // Check for reduced motion preference
 const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Base transition presets
-export const transitions = {
+export const transitions: {
+  smooth: Transition;
+  spring: Transition;
+  quick: Transition;
+} = {
   smooth: {
     type: 'tween' as const,
-    ease: [0.4, 0, 0.2, 1],
+    ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
     duration: prefersReducedMotion ? 0 : 0.3,
   },
   spring: {
@@ -18,7 +22,7 @@ export const transitions = {
   },
   quick: {
     type: 'tween' as const,
-    ease: [0.4, 0, 0.2, 1],
+    ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
     duration: prefersReducedMotion ? 0 : 0.2,
   },
 };

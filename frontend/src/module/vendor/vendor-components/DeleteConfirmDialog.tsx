@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogBody } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { transitions } from "@/lib/animations";
 
 interface DeleteConfirmDialogProps {
   open: boolean;

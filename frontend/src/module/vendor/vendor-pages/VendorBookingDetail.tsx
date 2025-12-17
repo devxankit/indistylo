@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   Calendar,
   Clock,
-  User,
   MapPin,
   IndianRupee,
   CheckCircle2,
@@ -21,7 +20,6 @@ import {
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
-import { useTouchFeedback } from "@/lib/touch";
 
 type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 

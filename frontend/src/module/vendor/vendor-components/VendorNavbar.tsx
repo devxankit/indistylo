@@ -2,7 +2,6 @@ import { Wallet, Calendar, BarChart3, User } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
-import { transitions } from '@/lib/animations'
 import { memo } from 'react'
 
 const navItems = [

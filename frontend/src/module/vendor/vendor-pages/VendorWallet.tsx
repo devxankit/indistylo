@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Wallet, ArrowDown, ArrowUp, Download, CreditCard, History, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -174,7 +174,7 @@ export function VendorWallet() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const filterRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
   useEffect(() => {

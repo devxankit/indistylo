@@ -42,7 +42,6 @@ export function VendorSettings() {
     currency: "INR",
   });
 
-  const [showPassword, setShowPassword] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const handleToggle = useCallback((key: keyof typeof settings) => {
@@ -230,7 +229,7 @@ export function VendorSettings() {
             initial="hidden"
             animate="visible"
             className="space-y-2">
-            {notificationSettings.map((setting, index) => {
+            {notificationSettings.map((setting) => {
               const Icon = setting.icon;
               return (
                 <motion.div
@@ -290,7 +289,7 @@ export function VendorSettings() {
             initial="hidden"
             animate="visible"
             className="space-y-2">
-            {appSettings.map((setting, index) => {
+            {appSettings.map((setting) => {
               const Icon = setting.icon;
               return (
                 <motion.div
@@ -369,7 +368,7 @@ export function VendorSettings() {
             initial="hidden"
             animate="visible"
             className="space-y-2">
-            {securitySettings.map((setting, index) => {
+            {securitySettings.map((setting) => {
               const Icon = setting.icon;
               return (
                 <motion.button

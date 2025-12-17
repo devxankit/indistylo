@@ -11,10 +11,9 @@ import {
   Grid3x3,
   List,
   Star,
-  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
 import { useTouchFeedback } from "@/lib/touch";
 import { CardSkeleton } from "@/components/ui/skeleton";
@@ -42,10 +41,10 @@ const ServiceCard = memo(
     const { isActive: isTouchActive, ...touchHandlers } = useTouchFeedback();
     const hasPricingTiers = service.pricingTiers && service.pricingTiers.length > 0;
     const minPrice = hasPricingTiers
-      ? Math.min(...service.pricingTiers.map((t) => t.price))
+      ? Math.min(...service.pricingTiers!.map((t) => t.price))
       : service.price;
     const maxPrice = hasPricingTiers
-      ? Math.max(...service.pricingTiers.map((t) => t.price))
+      ? Math.max(...service.pricingTiers!.map((t) => t.price))
       : service.price;
 
     if (viewMode === "list") {
@@ -337,7 +336,7 @@ export function VendorServices() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);

@@ -118,7 +118,7 @@ const searchTerms = [
 
 // Memoized stat card component for performance
 const StatCard = memo(
-  ({ stat, index }: { stat: (typeof statsCards)[0]; index: number }) => {
+  ({ stat }: { stat: (typeof statsCards)[0]; index: number }) => {
     const Icon = stat.icon;
     const { isActive, ...touchHandlers } = useTouchFeedback();
 
@@ -184,7 +184,7 @@ export function VendorHome() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   useEffect(() => {
     if (searchQuery.length > 0) {
@@ -285,7 +285,7 @@ export function VendorHome() {
               initial="hidden"
               animate="visible"
               className="space-y-3">
-              {recentBookings.map((booking, index) => (
+              {recentBookings.map((booking) => (
                 <motion.div
                   key={booking.id}
                   variants={staggerItem}
@@ -360,7 +360,7 @@ export function VendorHome() {
               animate="visible"
               className="space-y-3">
               {todaySchedule.map((appointment, index) => {
-                const isPast = false; // Can calculate based on current time
+                // const isPast = false; // Can calculate based on current time
                 const isNext = index === 0;
 
                 return (

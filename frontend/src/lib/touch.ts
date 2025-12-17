@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, TouchEvent, MouseEvent } from 'react';
+import { useState, useRef } from 'react';
+import type { TouchEvent, MouseEvent } from 'react';
 
 // Swipe direction type
 export type SwipeDirection = 'left' | 'right' | 'up' | 'down' | null;
@@ -115,8 +116,8 @@ export function useLongPress(
   callback: () => void,
   ms: number = 500
 ) {
-  const [longPressTriggered, setLongPressTriggered] = useState(false);
-  const timeout = useRef<NodeJS.Timeout | null>(null);
+  const [, setLongPressTriggered] = useState(false);
+  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const target = useRef<EventTarget | null>(null);
 
   const start = (event: TouchEvent | MouseEvent) => {

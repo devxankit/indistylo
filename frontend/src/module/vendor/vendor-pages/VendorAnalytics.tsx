@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { TrendingUp, IndianRupee, Users, Calendar, ArrowUp, ArrowDown, BarChart3, Target, Star, Clock, Activity, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend, LineChart, Line, Area, AreaChart } from 'recharts';
+import { motion } from 'framer-motion';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Area, AreaChart } from 'recharts';
 import { staggerContainer, staggerItem, transitions } from '@/lib/animations';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useSwipe } from '@/lib/touch';
@@ -242,8 +242,16 @@ const BookingsChart = memo(({ data }: { data: typeof bookingsChartData }) => {
 
 BookingsChart.displayName = 'BookingsChart';
 
+// Stat card type
+type StatCardData = {
+  title: string;
+  value: string;
+  change: number;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
 // Memoized stat card component
-const StatCard = memo(({ stat, index }: { stat: typeof statsCards[0]; index: number }) => {
+const StatCard = memo(({ stat }: { stat: StatCardData; index: number }) => {
   const Icon = stat.icon;
   const isPositive = stat.change >= 0;
   
@@ -416,8 +424,8 @@ export function VendorAnalytics() {
           animate="visible"
           className="grid grid-cols-2 gap-4"
         >
-          {statsCards.map((stat, index) => (
-            <StatCard key={index} stat={stat} index={index} />
+                  {statsCards.map((stat) => (
+            <StatCard key={stat.title} stat={stat} index={0} />
           ))}
         </motion.div>
 
@@ -533,7 +541,11 @@ export function VendorAnalytics() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ service, percentage }) => `${service.split(' ')[0]} ${percentage}%`}
+                  label={(props: any) => {
+                    const percent = (props.percent * 100).toFixed(0);
+                    const service = props.payload?.service || '';
+                    return service ? `${service.split(' ')[0]} ${percent}%` : '';
+                  }}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="bookings"
@@ -550,7 +562,7 @@ export function VendorAnalytics() {
                     borderRadius: '8px',
                     color: '#f5f5f5',
                   }}
-                  formatter={(value: number, name: string, props: any) => [
+                  formatter={(value: number, _name: string, props: any) => [
                     `${value} bookings (₹${props.payload.revenue.toLocaleString()})`,
                     props.payload.service
                   ]}
