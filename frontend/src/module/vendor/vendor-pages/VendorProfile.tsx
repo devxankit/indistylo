@@ -17,6 +17,7 @@ import {
   Users,
   MessageSquare,
   Clock,
+  Grid3x3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -56,6 +57,13 @@ const quickStats = [
 ];
 
 const menuItems = [
+  {
+    id: "services",
+    label: "Services",
+    description: "Manage your services",
+    icon: Grid3x3,
+    path: "/vendor/services",
+  },
   {
     id: "customers",
     label: "Customers",

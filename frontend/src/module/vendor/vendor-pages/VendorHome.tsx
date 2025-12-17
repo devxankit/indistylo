@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Clock,
   X,
+  Grid3x3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -457,6 +458,23 @@ export function VendorHome() {
                 <p className="font-medium text-foreground">Manage Bookings</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   View and update bookings
+                </p>
+              </div>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate("/vendor/services")}
+              className="bg-card border border-border rounded-xl p-4 text-left hover:border-primary/50 transition-all min-h-[120px] touch-manipulation flex flex-col justify-between shadow-sm hover:shadow-md">
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}>
+                <Grid3x3 className="w-6 h-6 text-primary mb-2" />
+              </motion.div>
+              <div>
+                <p className="font-medium text-foreground">Manage Services</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add and edit services
                 </p>
               </div>
             </motion.button>
