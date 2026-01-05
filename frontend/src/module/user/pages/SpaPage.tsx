@@ -1,51 +1,68 @@
-import { useNavigate } from 'react-router-dom'
-import { useRef, useState } from 'react'
-import Autoplay from 'embla-carousel-autoplay'
-import { mockSalons } from '../services/mockData'
-import { Card, CardContent, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
-import { Filter, MapPin, Search, Star } from 'lucide-react'
-import carousel1 from '@/assets/heropage/carousel/carousel1.png'
-import carousel2 from '@/assets/heropage/carousel/carousel2.png'
-import carousel3 from '@/assets/heropage/carousel/carousel3.png'
-import salonInterior1 from '@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-35.png'
-import salonInterior2 from '@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-39.png'
-import salonInterior3 from '@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-42.png'
-import salonInterior4 from '@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-44.png'
+import { useNavigate } from "react-router-dom";
+import { useRef, useState } from "react";
+import Autoplay from "embla-carousel-autoplay";
+import { mockSalons } from "../services/mockData";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { Filter, MapPin, Search, Star } from "lucide-react";
+import carousel1 from "@/assets/heropage/carousel/carousel1.png";
+import carousel2 from "@/assets/heropage/carousel/carousel2.png";
+import carousel3 from "@/assets/heropage/carousel/carousel3.png";
+import salonInterior1 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-35.png";
+import salonInterior2 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-39.png";
+import salonInterior3 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-42.png";
+import salonInterior4 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-44.png";
 
 export function SpaPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const autoplayPlugin = useRef(
     Autoplay({ delay: 1500, stopOnInteraction: false, stopOnMouseEnter: false })
-  )
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
-  const spaSalons = mockSalons.filter((salon) => salon.category?.includes('Spa'))
+  const spaSalons = mockSalons.filter((salon) =>
+    salon.category?.includes("Spa")
+  );
 
-  const spaImages = [salonInterior1, salonInterior2, salonInterior3, salonInterior4]
+  const spaImages = [
+    salonInterior1,
+    salonInterior2,
+    salonInterior3,
+    salonInterior4,
+  ];
 
   const filteredSpas = spaSalons.filter((salon) => {
     const matchesSearch =
-      searchQuery.trim() === '' ||
+      searchQuery.trim() === "" ||
       salon.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
       salon.location.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
       (salon.category &&
-        salon.category.some((cat) => cat.toLowerCase().includes(searchQuery.toLowerCase().trim())))
+        salon.category.some((cat) =>
+          cat.toLowerCase().includes(searchQuery.toLowerCase().trim())
+        ));
 
     const matchesCategory =
-      selectedCategory === 'All' ||
-      (salon.category && salon.category.includes(selectedCategory))
+      selectedCategory === "All" ||
+      (salon.category && salon.category.includes(selectedCategory));
 
-    return matchesSearch && matchesCategory
-  })
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <main className="px-4 py-4 space-y-4">
         <section className="text-left">
-          <h2 className="text-2xl font-semibold text-foreground">Spa Retreats</h2>
+          <h2 className="text-2xl font-semibold text-foreground">
+            Spa Retreats
+          </h2>
           <p className="text-muted-foreground text-sm">
             Curated spa therapies for pure relaxation and instant glow
           </p>
@@ -63,14 +80,17 @@ export function SpaPage() {
               className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-          <Button variant="outline" size="icon" className="w-10 h-10 flex-shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-10 h-10 flex-shrink-0">
             <Filter className="w-4 h-4" />
           </Button>
         </div>
 
         {/* Category Filters - Mobile View */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:hidden">
-          {['All', 'Hair', 'Skin', 'Nails', 'Spa'].map((category) => (
+          {["All", "Hair", "Skin", "Nails", "Spa"].map((category) => (
             <Button
               key={category}
               onClick={() => setSelectedCategory(category)}
@@ -78,10 +98,9 @@ export function SpaPage() {
               size="sm"
               className={`whitespace-nowrap ${
                 selectedCategory === category
-                  ? '!bg-yellow-400 !text-gray-900 !border-yellow-400 hover:!bg-yellow-400 hover:!text-gray-900'
-                  : 'text-foreground hover:text-yellow-400 hover:border-yellow-400'
-              }`}
-            >
+                  ? "!bg-yellow-400 !text-gray-900 !border-yellow-400 hover:!bg-yellow-400 hover:!text-gray-900"
+                  : "text-foreground hover:text-yellow-400 hover:border-yellow-400"
+              }`}>
               {category}
             </Button>
           ))}
@@ -101,7 +120,7 @@ export function SpaPage() {
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-              {['All', 'Hair', 'Skin', 'Nails', 'Spa'].map((category) => (
+              {["All", "Hair", "Skin", "Nails", "Spa"].map((category) => (
                 <Button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
@@ -109,15 +128,17 @@ export function SpaPage() {
                   size="sm"
                   className={`whitespace-nowrap ${
                     selectedCategory === category
-                      ? 'border-yellow-400 text-yellow-400 bg-yellow-400/10 hover:text-yellow-400'
-                      : 'text-foreground hover:text-yellow-400 hover:border-yellow-400'
-                  }`}
-                >
+                      ? "border-yellow-400 text-yellow-400 bg-yellow-400/10 hover:text-yellow-400"
+                      : "text-foreground hover:text-yellow-400 hover:border-yellow-400"
+                  }`}>
                   {category}
                 </Button>
               ))}
             </div>
-            <Button variant="outline" size="icon" className="w-10 h-10 flex-shrink-0">
+            <Button
+              variant="outline"
+              size="icon"
+              className="w-10 h-10 flex-shrink-0">
               <Filter className="w-4 h-4" />
             </Button>
           </div>
@@ -126,11 +147,10 @@ export function SpaPage() {
         <Carousel
           className="w-full pt-2 md:w-4/5 md:mx-auto mt-2"
           opts={{
-            align: 'start',
+            align: "start",
             loop: true,
           }}
-          plugins={[autoplayPlugin.current]}
-        >
+          plugins={[autoplayPlugin.current]}>
           <CarouselContent>
             <CarouselItem>
               <div className="rounded-2xl overflow-hidden">
@@ -168,7 +188,9 @@ export function SpaPage() {
           <div className="space-y-4 md:grid md:grid-cols-3 md:gap-4 md:space-y-0">
             {filteredSpas.length > 0 ? (
               filteredSpas.map((salon, index) => (
-                <Card key={salon.id} className="cursor-pointer hover:bg-muted transition-colors py-2">
+                <Card
+                  key={salon.id}
+                  className="cursor-pointer hover:bg-muted transition-colors py-2">
                   <CardContent className="p-4">
                     <div className="flex gap-4 mb-2">
                       <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -179,7 +201,9 @@ export function SpaPage() {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-base text-start mb-1">{salon.name}</CardTitle>
+                        <CardTitle className="text-base text-start mb-1">
+                          {salon.name}
+                        </CardTitle>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                           <MapPin className="w-3 h-3" />
                           <span className="truncate">{salon.location}</span>
@@ -189,7 +213,9 @@ export function SpaPage() {
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                             <span>{salon.rating}</span>
                           </div>
-                          <span className="text-muted-foreground">{salon.distance} km away</span>
+                          <span className="text-muted-foreground">
+                            {salon.distance} km away
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -197,7 +223,10 @@ export function SpaPage() {
                       <div className="h-[1px] bg-gradient-to-r from-transparent via-primary to-transparent mb-4"></div>
                       <div className="flex items-center justify-between">
                         <span>Service starting from ₹{salon.price}</span>
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/shops/${salon.id}`)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/shops/${salon.id}`)}>
                           Book
                         </Button>
                       </div>
@@ -214,6 +243,5 @@ export function SpaPage() {
         </section>
       </main>
     </div>
-  )
+  );
 }
-

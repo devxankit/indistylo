@@ -99,5 +99,13 @@ function DialogBody({ children, className, style }: { children: React.ReactNode;
   )
 }
 
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogBody }
+function DialogFooter({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex items-center justify-end gap-2 p-4 border-t border-border", className)}>
+      {children}
+    </div>
+  )
+}
+
+export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogBody, DialogFooter }
 

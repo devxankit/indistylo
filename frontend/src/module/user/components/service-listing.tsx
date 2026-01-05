@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { useNavigate } from "react-router-dom"
-import { useCartStore } from "../store/useCartStore"
+import { useNavigate } from "react-router-dom";
+import { useCartStore } from "../store/useCartStore";
 
 interface Service {
-  id: string
-  title: string
-  description: string
-  price: number
-  duration: number
-  image: string
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  duration: number;
+  image: string;
 }
 
 const maleServices: Service[] = [
@@ -19,7 +19,8 @@ const maleServices: Service[] = [
     description: "Professional styling",
     price: 999,
     duration: 110,
-    image: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=200",
+    image:
+      "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=200",
   },
   {
     id: "2",
@@ -27,7 +28,8 @@ const maleServices: Service[] = [
     description: "Complete grooming",
     price: 1349,
     duration: 125,
-    image: "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&q=80&w=200",
+    image:
+      "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&q=80&w=200",
   },
   {
     id: "3",
@@ -35,7 +37,8 @@ const maleServices: Service[] = [
     description: "Classic haircut",
     price: 299,
     duration: 30,
-    image: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=200",
+    image:
+      "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=200",
   },
   {
     id: "4",
@@ -43,9 +46,10 @@ const maleServices: Service[] = [
     description: "Relaxation package",
     price: 549,
     duration: 60,
-    image: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=200",
+    image:
+      "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=200",
   },
-]
+];
 
 const femaleServices: Service[] = [
   {
@@ -54,7 +58,8 @@ const femaleServices: Service[] = [
     description: "Professional beauty",
     price: 1199,
     duration: 120,
-    image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=200",
+    image:
+      "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=200",
   },
   {
     id: "2",
@@ -62,7 +67,8 @@ const femaleServices: Service[] = [
     description: "Complete makeover",
     price: 1499,
     duration: 135,
-    image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=200",
+    image:
+      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=200",
   },
   {
     id: "3",
@@ -70,7 +76,8 @@ const femaleServices: Service[] = [
     description: "Classic haircut",
     price: 399,
     duration: 45,
-    image: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=200",
+    image:
+      "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=200",
   },
   {
     id: "4",
@@ -78,18 +85,22 @@ const femaleServices: Service[] = [
     description: "Relaxation package",
     price: 649,
     duration: 75,
-    image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=200",
+    image:
+      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=200",
   },
-]
+];
 
 interface ServiceListingProps {
-  selectedGender?: 'male' | 'female'
+  selectedGender?: "male" | "female";
 }
 
-export function ServiceListing({ selectedGender = 'male' }: ServiceListingProps) {
+export function ServiceListing({
+  selectedGender = "male",
+}: ServiceListingProps) {
   const navigate = useNavigate();
   const { addItem } = useCartStore();
-  const currentServices = selectedGender === 'male' ? maleServices : femaleServices;
+  const currentServices =
+    selectedGender === "male" ? maleServices : femaleServices;
 
   const handleAdd = (service: Service) => {
     const serviceItem = {
@@ -102,61 +113,63 @@ export function ServiceListing({ selectedGender = 'male' }: ServiceListingProps)
       overview: [],
       howItWorks: [],
     };
-    addItem(serviceItem, 1, selectedGender);
-    navigate('/order-summary');
-  }
+    addItem(serviceItem, 1, selectedGender, "Home Service", "at-home");
+    navigate("/order-summary");
+  };
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-foreground">Haircut & styling (13)</h2>
-
+      <h2 className="text-lg font-semibold text-foreground">
+        Haircut & styling (13)
+      </h2>
       <div className="space-y-3 md:grid md:grid-cols-3 md:gap-4 md:space-y-0">
-        {currentServices.map((service) => (
+        {currentServices.map((service, index) => (
           <div
             key={service.id}
-            className="flex gap-4 bg-card border border-gray-700 rounded-lg p-4 hover:border-yellow-400/50 transition-colors"
-          >
+            className="flex gap-4 bg-[#1a1a1a] border border-gray-800 rounded-2xl p-4 hover:border-yellow-400/30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500"
+            style={{ animationDelay: `${index * 50}ms` }}>
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-100 mb-1">{service.title}</h3>
-              <p className="text-xs text-gray-400 mb-3">{service.description}</p>
+              <h3 className="text-sm font-semibold text-gray-100 mb-1">
+                {service.title}
+              </h3>
+              <p className="text-xs text-gray-400 mb-3 line-clamp-2">
+                {service.description}
+              </p>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-8 my-2">
-                  <span className="text-lg font-bold text-yellow-400">₹{service.price}</span>
-                  <span className="text-xs text-gray-400">{service.duration} mins</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-lg font-bold text-yellow-400">
+                    ₹{service.price}
+                  </span>
+                  <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
+                    {service.duration} mins
+                  </span>
                 </div>
 
-                 <br />
-
+                <button
+                  onClick={() => handleAdd(service)}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-4 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 shadow-lg shadow-yellow-400/10">
+                  ADD
+                </button>
               </div>
 
-
-                {/* Quantity Controls */}
-                <div className="flex items-center gap-4 mb-2">
-                  <button
-                    onClick={() => handleAdd(service)}
-                    className="py-1 px-3 rounded-sm text-xs bg-transparent border border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:text-yellow-400 hover:border-yellow-400 transition-colors font-semibold"
-                  >
-                    Add
-                  </button>
-                </div>
-              <div className="text-yellow-400 hover:text-yellow-300 text-md mt-3 font-medium mt-2 transition-colors">
+              <div className="text-yellow-400/80 hover:text-yellow-400 text-[11px] font-semibold mt-3 transition-colors flex items-center gap-1 cursor-pointer w-fit">
                 View Details
               </div>
             </div>
 
             {/* Image */}
-            <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-700 flex-shrink-0">
+            <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-800 flex-shrink-0 border border-gray-700/50">
               <img
                 src={service.image || "/placeholder.svg"}
                 alt={service.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
               />
             </div>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }

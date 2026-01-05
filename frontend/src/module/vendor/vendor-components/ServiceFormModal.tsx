@@ -1,8 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X,
-  Upload,
   Plus,
   Trash2,
   IndianRupee,
@@ -12,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogBo
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Service, PricingTier } from "../store/useServiceStore";
+import { ImageUpload } from "./ImageUpload";
 
 interface ServiceFormModalProps {
   open: boolean;
@@ -29,9 +28,8 @@ export function ServiceFormModal({
   categories,
 }: ServiceFormModalProps) {
   const isEditMode = !!service;
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(service?.image || null);
-  
+
   const [formData, setFormData] = useState({
     name: service?.name || "",
     category: service?.category || categories[1] || "",
@@ -42,7 +40,6 @@ export function ServiceFormModal({
     tags: service?.tags || [] as string[],
     pricingTiers: service?.pricingTiers || [] as PricingTier[],
   });
-
   const [tagInput, setTagInput] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -76,22 +73,6 @@ export function ServiceFormModal({
     setErrors({});
   }, [service, open, categories]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setErrors({ ...errors, image: "Image size should be less than 5MB" });
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setErrors({ ...errors, image: "" });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleAddTag = useCallback(() => {
     if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
       setFormData({
@@ -111,7 +92,7 @@ export function ServiceFormModal({
 
   const handleAddPricingTier = useCallback(() => {
     const newTier: PricingTier = {
-      id: `tier_${Date.now()}`,
+      id: `tier_${Date.now()} `,
       name: "",
       price: 0,
       description: "",
@@ -140,7 +121,7 @@ export function ServiceFormModal({
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = "Service name is required";
     }
@@ -204,45 +185,18 @@ export function ServiceFormModal({
         <DialogBody className="px-4 pb-4 space-y-4 overflow-y-auto">
           {/* Image Upload */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Service Image</label>
-            <div className="space-y-2">
-              {imagePreview ? (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-40 object-cover rounded-lg border border-border"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImagePreview(null);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                    }}
-                    className="absolute top-2 right-2 p-1.5 bg-red-400 text-white rounded-full hover:bg-red-500 transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-40 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors">
-                  <Upload className="w-6 h-6 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Upload Image</span>
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-              {errors.image && (
-                <p className="text-xs text-red-400">{errors.image}</p>
-              )}
-            </div>
+            <ImageUpload
+              value={imagePreview || ""}
+              onChange={(val) => {
+                setImagePreview(val as string);
+                setErrors({ ...errors, image: "" });
+              }}
+              label="Service Image"
+              maxSizeMB={5}
+            />
+            {errors.image && (
+              <p className="text-xs text-red-400">{errors.image}</p>
+            )}
           </div>
 
           {/* Service Name */}
@@ -476,7 +430,7 @@ export function ServiceFormModal({
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
                       className="hover:text-red-400">
-                      <X className="w-3 h-3" />
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                     </button>
                   </span>
                 ))}

@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
+import { useVendorStore } from "../store/useVendorStore";
 import { useCountUp } from "@/hooks/useCountUp";
 import { useTouchFeedback } from "@/lib/touch";
 import { CardSkeleton } from "@/components/ui/skeleton";
@@ -182,9 +183,16 @@ StatCard.displayName = "StatCard";
 
 export function VendorHome() {
   const navigate = useNavigate();
+  const { status } = useVendorStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading] = useState(false);
+
+  useEffect(() => {
+    if (status === 'pending') {
+      navigate("/vendor/verification-pending");
+    }
+  }, [status, navigate]);
 
   useEffect(() => {
     if (searchQuery.length > 0) {
@@ -324,9 +332,9 @@ export function VendorHome() {
                         animate={
                           booking.status === "pending"
                             ? {
-                                scale: [1, 1.05, 1],
-                                opacity: [1, 0.8, 1],
-                              }
+                              scale: [1, 1.05, 1],
+                              opacity: [1, 0.8, 1],
+                            }
                             : {}
                         }
                         transition={{ duration: 2, repeat: Infinity }}>

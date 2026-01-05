@@ -79,6 +79,7 @@ export function VendorAuth() {
     setPhoneNumber,
     setAuthenticated,
     setProfile,
+    setStatus,
   } = useVendorStore();
   const [step, setStep] = useState<AuthStep>("auth-mode");
   const [authMode, setAuthMode] = useState<AuthMode>(null);
@@ -137,8 +138,16 @@ export function VendorAuth() {
       setOtpError(false);
       if (authMode === "login") {
         // For login, authenticate and navigate directly
+        // For login, authenticate and navigate based on status
         setAuthenticated(true);
-        navigate("/vendor/home");
+        // Default to active for existing users effectively, but check status if available
+        // In a real app we'd fetch the user profile here which includes status
+        // For now we check the store state
+        if (useVendorStore.getState().status === 'pending') {
+          navigate("/vendor/verification-pending");
+        } else {
+          navigate("/vendor/home");
+        }
       } else {
         // For signup, proceed to onboarding
         setStep("onboarding");
@@ -171,8 +180,9 @@ export function VendorAuth() {
       experience: formData.experience,
       specialization: formData.specialization,
     });
+    setStatus('pending'); // New signups are pending
     setAuthenticated(true);
-    navigate("/vendor/home");
+    navigate("/vendor/verification-pending");
   };
 
   const vendorTypeOptions = [
@@ -437,9 +447,9 @@ export function VendorAuth() {
                           animate={
                             isSelected
                               ? {
-                                  rotate: [0, 10, -10, 0],
-                                  scale: [1, 1.1, 1],
-                                }
+                                rotate: [0, 10, -10, 0],
+                                scale: [1, 1.1, 1],
+                              }
                               : {}
                           }
                           transition={{ duration: 0.5 }}>
@@ -617,8 +627,8 @@ export function VendorAuth() {
                       animate={
                         otpError && index === otp.length - 1
                           ? {
-                              x: [0, -10, 10, -10, 0],
-                            }
+                            x: [0, -10, 10, -10, 0],
+                          }
                           : {}
                       }
                       transition={otpError && index === otp.length - 1 ? { duration: 0.5 } : transitions.quick}

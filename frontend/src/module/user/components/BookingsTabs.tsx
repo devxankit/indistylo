@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-type BookingTabType = 'Upcoming' | 'Completed' | 'Cancelled' | 'Missed'
+export type BookingTabType = 'Upcoming' | 'Completed' | 'Cancelled' | 'Missed'
 
 interface BookingsTabsProps {
   activeTab: BookingTabType

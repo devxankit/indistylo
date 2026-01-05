@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Mail,
@@ -10,7 +9,6 @@ import {
   Shield,
   LogOut,
   ChevronRight,
-  Camera,
   Star,
   Calendar,
   TrendingUp,
@@ -22,19 +20,10 @@ import {
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
+import { useVendorStore } from "../store/useVendorStore";
+import { ImageUpload } from "../vendor-components/ImageUpload";
 
-// Mock vendor data
-const vendorData = {
-  name: "Indistylo Salon & Spa",
-  email: "vendor@indistylo.com",
-  phone: "+91 98765 43210",
-  address: "123 MG Road, Pune, Maharashtra 411001",
-  rating: 4.8,
-  totalBookings: 1250,
-  joinedDate: "January 2023",
-  profileImage: "",
-};
-
+// Mock vendor data - mostly replaced by store now
 const quickStats = [
   {
     label: "Total Bookings",
@@ -117,7 +106,16 @@ const menuItems = [
 
 export function VendorProfile() {
   const navigate = useNavigate();
-  const [vendor] = useState(vendorData);
+  const {
+    businessName,
+    ownerName,
+    email,
+    phoneNumber,
+    address,
+    profileImage,
+    galleryImages,
+    setProfile
+  } = useVendorStore();
 
   const handleLogout = () => {
     // Handle logout logic
@@ -126,7 +124,6 @@ export function VendorProfile() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
-      {/* Profile Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -135,37 +132,25 @@ export function VendorProfile() {
         <div className="px-4 py-8 space-y-6">
           {/* Profile Image and Edit */}
           <div className="flex flex-col items-center gap-4">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative group">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center text-3xl font-bold text-primary border-4 border-background shadow-lg">
-                {vendor.profileImage ? (
-                  <img
-                    src={vendor.profileImage}
-                    alt={vendor.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  vendor.name.charAt(0)
-                )}
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="absolute bottom-0 right-0 p-2 bg-primary rounded-full shadow-lg min-w-[36px] min-h-[36px] flex items-center justify-center touch-manipulation"
-                aria-label="Change profile picture">
-                <Camera className="w-4 h-4 text-white" />
-              </motion.button>
-            </motion.div>
+            <div className="w-32 mx-auto">
+              <ImageUpload
+                value={profileImage || ""}
+                onChange={(val) => setProfile({ profileImage: val as string })}
+                label="Profile Photo"
+                maxSizeMB={5}
+              />
+            </div>
 
             {/* Vendor Info */}
             <div className="text-center">
-              <h2 className="text-sm font-medium font-size-2 text-foreground">
-                {vendor.name}
+              <h2 className="text-xl font-bold font-size-2 text-foreground">
+                {businessName || "Your Business Name"}
               </h2>
+              <p className="text-sm font-medium text-foreground/80 mt-1">
+                {ownerName || "Owner Name"}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Member since {vendor.joinedDate}
+                Joined Pending...
               </p>
             </div>
           </div>
@@ -206,6 +191,24 @@ export function VendorProfile() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...transitions.smooth, delay: 0.1 }}
           className="space-y-3">
+          {/* Salon Gallery */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...transitions.smooth, delay: 0.05 }}
+            className="space-y-3 pb-6 border-b border-border">
+            <h2 className="text-base font-semibold text-foreground">
+              Salon Gallery
+            </h2>
+            <ImageUpload
+              value={galleryImages || []}
+              onChange={(val) => setProfile({ galleryImages: val as string[] })}
+              multiple
+              maxFiles={10}
+              label="Add Salon Photos"
+            />
+          </motion.section>
+
           <h2 className="text-base font-semibold text-foreground">
             Contact Information
           </h2>
@@ -225,7 +228,7 @@ export function VendorProfile() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">Email</p>
                   <p className="text-sm font-medium text-foreground truncate">
-                    {vendor.email}
+                    {email}
                   </p>
                 </div>
               </div>
@@ -242,7 +245,7 @@ export function VendorProfile() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">Phone</p>
                   <p className="text-sm font-medium text-foreground">
-                    {vendor.phone}
+                    {phoneNumber}
                   </p>
                 </div>
               </div>
@@ -259,7 +262,7 @@ export function VendorProfile() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">Address</p>
                   <p className="text-sm font-medium text-foreground">
-                    {vendor.address}
+                    {address}
                   </p>
                 </div>
               </div>
