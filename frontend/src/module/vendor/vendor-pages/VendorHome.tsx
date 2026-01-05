@@ -189,9 +189,9 @@ export function VendorHome() {
   const [isLoading] = useState(false);
 
   useEffect(() => {
-    if (status === 'pending') {
-      navigate("/vendor/verification-pending");
-    }
+    // if (status === 'pending') {
+    //   navigate("/vendor/verification-pending");
+    // }
   }, [status, navigate]);
 
   useEffect(() => {

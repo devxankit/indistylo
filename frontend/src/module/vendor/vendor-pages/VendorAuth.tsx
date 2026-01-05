@@ -144,7 +144,8 @@ export function VendorAuth() {
         // In a real app we'd fetch the user profile here which includes status
         // For now we check the store state
         if (useVendorStore.getState().status === 'pending') {
-          navigate("/vendor/verification-pending");
+          // navigate("/vendor/verification-pending");
+          navigate("/vendor/home");
         } else {
           navigate("/vendor/home");
         }
@@ -182,7 +183,8 @@ export function VendorAuth() {
     });
     setStatus('pending'); // New signups are pending
     setAuthenticated(true);
-    navigate("/vendor/verification-pending");
+    // navigate("/vendor/verification-pending");
+    navigate("/vendor/home");
   };
 
   const vendorTypeOptions = [
