@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "build": "rimraf dist && tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "npm run build"
   },
   "keywords": [],
   "author": "",
@@ -31,9 +32,7 @@
     "morgan": "^1.10.1",
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
-    "razorpay": "^2.9.6"
-  },
-  "devDependencies": {
+    "razorpay": "^2.9.6",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
