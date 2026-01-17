@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/dialog";
 import { type Professional } from "../services/types";
 import { Star, User, ChevronRight, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSalonStore } from "../store/useSalonStore";
 
 interface SelectProfessionalDialogProps {

@@ -114,7 +114,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   rescheduleBooking: async (bookingId, date, time) => {
     set({ loading: true, error: null });
     try {
-      const response: any = await api.patch(`/bookings/${bookingId}`, {
+      await api.patch(`/bookings/${bookingId}`, {
         date,
         time,
       });

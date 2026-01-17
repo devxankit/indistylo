@@ -82,14 +82,10 @@ export function VendorAuth() {
     phoneNumber,
     setVendorType,
     setPhoneNumber,
-    setAuthenticated,
-    setProfile,
-    setStatus,
     sendOtp,
     verifyOtp,
     updateProfile,
     uploadFile,
-    loading,
     error,
   } = useVendorStore();
   const [step, setStep] = useState<AuthStep>("auth-mode");

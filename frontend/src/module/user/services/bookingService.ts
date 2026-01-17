@@ -33,7 +33,7 @@ export const bookingService = {
    */
   async cancelBooking(bookingId: string): Promise<void> {
     try {
-      await api.patch(`/bookings/${bookingId}/cancel`);
+      await api.patch(`/bookings/${bookingId}/cancel`, {});
     } catch (error) {
       console.error("Error cancelling booking:", error);
       throw error;

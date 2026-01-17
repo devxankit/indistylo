@@ -147,7 +147,7 @@ export const getSalonStaff = async (
         let staff = await Staff.find({ salon: businessId as string, isActive: true });
 
         // If no staff found, check if the ID provided is actually a Vendor (User) ID
-        if (staff.length === 0) {
+        if (staff.length === 0 && businessId) {
             // Check Salon
             const salon = await Salon.findOne({ vendor: businessId });
             if (salon) {
@@ -161,9 +161,9 @@ export const getSalonStaff = async (
             }
 
             // If we found a business ID different from the param, try fetching again
-            if (businessId !== req.params.id) {
+            if (businessId !== req.params.id && businessId) {
                 console.log(`Resolved Vendor ID ${req.params.id} to Business ID ${businessId}`);
-                staff = await Staff.find({ salon: businessId, isActive: true });
+                staff = await Staff.find({ salon: businessId, isActive: true }).lean() as any;
             }
         }
 
@@ -187,9 +187,9 @@ export const getSalonSchedule = async (
         console.log(`Fetching schedule for id: ${req.params.id}`);
         let businessId = req.params.id;
 
-        let schedules = await Schedule.find({ salon: businessId as string });
+        let schedules: any = await Schedule.find({ salon: businessId as string });
 
-        if (schedules.length === 0) {
+        if (schedules.length === 0 && businessId) {
             // Check Salon
             const salon = await Salon.findOne({ vendor: businessId });
             if (salon) {
@@ -202,9 +202,9 @@ export const getSalonSchedule = async (
                 }
             }
 
-            if (businessId !== req.params.id) {
+            if (businessId !== req.params.id && businessId) {
                 console.log(`Resolved Vendor ID ${req.params.id} to Business ID ${businessId}`);
-                schedules = await Schedule.find({ salon: businessId });
+                schedules = await Schedule.find({ salon: businessId }).lean() as any;
             }
         }
 

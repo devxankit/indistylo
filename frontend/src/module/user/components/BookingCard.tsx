@@ -2,17 +2,6 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Home, Building2, User } from "lucide-react";
 
-interface Booking {
-  _id: string;
-  salon: { name: string; _id: string };
-  service: { name: string; _id: string };
-  date: string;
-  timeSlot: string;
-  status: "upcoming" | "completed" | "cancelled" | "missed";
-  type?: "at-salon" | "at-home";
-  price: number;
-  staff?: { name: string; _id: string };
-}
 
 interface BookingCardProps {
   booking: any; // Using any for flexibility with store types
@@ -59,15 +48,14 @@ export function BookingCard({
   return (
     <Card
       onClick={onViewDetails}
-      className={`border-l-4 bg-[#202020] border-[#3a3a3a] cursor-pointer hover:bg-[#252525] transition-colors ${
-        isUpcoming
+      className={`border-l-4 bg-[#202020] border-[#3a3a3a] cursor-pointer hover:bg-[#252525] transition-colors ${isUpcoming
           ? "border-l-yellow-400"
           : isCompleted
-          ? "border-l-green-500"
-          : isCancelled
-          ? "border-l-red-500"
-          : "border-l-gray-500"
-      } ${isCompleted || isCancelled || isMissed ? "opacity-75" : ""}`}>
+            ? "border-l-green-500"
+            : isCancelled
+              ? "border-l-red-500"
+              : "border-l-gray-500"
+        } ${isCompleted || isCancelled || isMissed ? "opacity-75" : ""}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">

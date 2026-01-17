@@ -24,7 +24,7 @@ interface VendorProfessionalState {
     deleteProfessional: (id: string) => Promise<void>;
 }
 
-export const useVendorProfessionalStore = create<VendorProfessionalState>((set, get) => ({
+export const useVendorProfessionalStore = create<VendorProfessionalState>((set) => ({
     professionals: [],
     loading: false,
     error: null,

@@ -15,8 +15,8 @@ async function debug() {
 
         for (const v of vendors) {
             console.log(`\nVendor: ${v._id}`);
-            const salons = await Salon.find({ vendor: v.user }).lean();
-            console.log(`Salons for user ${v.user}: ${salons.length}`);
+            const salons = await Salon.find({ vendor: (v as any).user }).lean();
+            console.log(`Salons for user ${(v as any).user}: ${salons.length}`);
 
             for (const s of salons) {
                 console.log(`  Salon: ${s._id}`);

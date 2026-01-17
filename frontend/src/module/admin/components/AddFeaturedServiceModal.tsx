@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useContentStore, type FeaturedService } from "../store/useContentStore";
 import { useCategoryStore } from "../store/useCategoryStore";
 import { ImageUpload } from "@/module/vendor/vendor-components/ImageUpload";

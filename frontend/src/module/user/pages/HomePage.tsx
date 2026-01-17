@@ -144,8 +144,8 @@ export function HomePage() {
                         {deal.title.includes("Hair")
                           ? "Hair Services"
                           : deal.title.includes("Skin")
-                          ? "Skin Services"
-                          : "Services"}
+                            ? "Skin Services"
+                            : "Services"}
                       </span>
                     </div>
 
@@ -201,7 +201,7 @@ export function HomePage() {
             {categories.flatMap((group) =>
               group.subcategories.map((subcategory) => (
                 <div
-                  key={subcategory._id || subcategory.id}
+                  key={subcategory._id}
                   onClick={() =>
                     navigate(`/at-home?category=${subcategory.name}`)
                   }

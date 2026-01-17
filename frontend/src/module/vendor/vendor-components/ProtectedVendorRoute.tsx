@@ -1,10 +1,9 @@
 
 import { Navigate, Outlet } from "react-router-dom";
 import { useVendorStore } from "../store/useVendorStore";
-import { Loader2 } from "lucide-react";
 
 export function ProtectedVendorRoute() {
-    const { isAuthenticated, status, loading, token } = useVendorStore();
+    const { isAuthenticated, status, token } = useVendorStore();
 
 
 

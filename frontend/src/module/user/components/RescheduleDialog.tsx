@@ -41,7 +41,7 @@ export function RescheduleDialog({
 
     setIsSubmitting(true);
     try {
-      await onReschedule(booking.id, selectedDate, selectedTime);
+      await onReschedule(booking._id || booking.id || "", selectedDate, selectedTime);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);

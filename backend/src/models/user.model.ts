@@ -12,8 +12,8 @@ export interface IUser extends Document {
   lockUntil: Date | null;
   lastLoginAt: Date | null;
   lastLoginIp: string;
-  resetPasswordToken?: string;
-  resetPasswordExpire?: Date;
+  resetPasswordToken?: string | null;
+  resetPasswordExpire?: Date | null;
   matchPassword(enteredPassword: string): Promise<boolean>;
   incrementFailedAttempts(): Promise<IUser>;
   resetFailedAttempts(): Promise<IUser>;

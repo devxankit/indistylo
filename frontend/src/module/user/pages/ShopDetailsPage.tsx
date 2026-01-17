@@ -141,7 +141,7 @@ export function ShopDetailsPage() {
     salonInterior4,
   ];
   const heroImage =
-    salon?.images?.[0] ||
+    salon?.image ||
     interiorImages[salon ? salon._id.length % interiorImages.length : 0];
 
   const handleAddService = (service: any) => {
@@ -221,7 +221,7 @@ export function ShopDetailsPage() {
     return (R * c).toFixed(2);
   };
 
-  const distance = salon ? calculateDistance(salon.geo) : null;
+  const distance = (salon && salon.geo) ? calculateDistance(salon.geo as unknown as { coordinates: [number, number] }) : null;
 
   return (
     <div className="min-h-screen bg-background pb-24 text-foreground">
@@ -374,7 +374,7 @@ export function ShopDetailsPage() {
         </section>
 
         <section className="space-y-4">
-          {servicesToShow.map((service, index) => {
+          {servicesToShow.map((service: any, index: number) => {
             const qty = getServiceQuantity(service.id);
             return (
               <div
@@ -433,7 +433,7 @@ export function ShopDetailsPage() {
                   </div>
                 </div>
                 <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-                  {service.highlights.map((item) => (
+                  {service.highlights.map((item: string) => (
                     <li key={item} className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary/80" />
                       {item}

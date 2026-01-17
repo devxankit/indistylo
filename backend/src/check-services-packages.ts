@@ -39,7 +39,7 @@ const checkData = async () => {
             console.log(`Packages found: ${packages.length}`);
             packages.forEach(p => console.log(` - ${p.name} (${p.price})`));
         } catch (e) {
-            console.log('Error querying packages (maybe model/schema issue):', e.message);
+            console.log('Error querying packages (maybe model/schema issue):', (e as Error).message);
         }
 
     } catch (err) {

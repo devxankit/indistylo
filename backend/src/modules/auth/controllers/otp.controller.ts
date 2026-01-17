@@ -237,7 +237,7 @@ export const verifyOTP = async (
 
       // Block login if pending AND profile is already filled (not a new registration flow)
       // New users (isNewUser=true) or users with empty address need access to complete profile
-      const isProfileIncomplete = !profile?.address || !profile?.city;
+      const isProfileIncomplete = !(profile && 'address' in profile && profile.address) || !(profile && 'city' in profile && profile.city);
 
       if (!isNewUser && profile?.status === "pending" && !isProfileIncomplete) {
         res.status(403);
@@ -265,12 +265,12 @@ export const verifyOTP = async (
     res.status(200).json({
       user: {
         _id: user._id,
-        name: profile?.name || profile?.businessName || "User",
+        name: (profile && 'name' in profile && profile.name) || (profile && 'businessName' in profile && profile.businessName) || "User",
         phone: user.phone,
         role: user.role,
-        email: user.email || profile?.email || "",
-        status: profile?.status || "active",
-        isVerified: profile?.isVerified || false,
+        email: user.email || (profile && 'email' in profile && profile.email) || "",
+        status: (profile && 'status' in profile && profile.status) || "active",
+        isVerified: (profile && 'isVerified' in profile && profile.isVerified) || false,
         profile: profile,
       },
       token: accessToken,

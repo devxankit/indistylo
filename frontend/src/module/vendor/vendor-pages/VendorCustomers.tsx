@@ -2,17 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
-  Filter,
-  MoreVertical,
-  Phone,
-  Mail,
   Calendar,
   IndianRupee,
   ChevronRight,
   TrendingUp,
   Users,
   Star,
-  User,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCustomerStore, type Customer } from "../store/useCustomerStore";
@@ -134,7 +129,7 @@ export function VendorCustomers() {
             { label: 'Active Now', value: stats.active, icon: TrendingUp, color: 'text-emerald-400' },
           ].map((stat, i) => (
             <motion.div
-              hover={{ scale: 1.02 }}
+              whileHover={{ scale: 1.02 }}
               key={i}
               className="p-3 bg-card border border-border rounded-2xl space-y-2 shadow-sm"
             >

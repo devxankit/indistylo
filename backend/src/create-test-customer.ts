@@ -35,10 +35,10 @@ const createTestCustomer = async () => {
             user: user._id,
             name: 'Test Customer',
             email: 'testcustomer@example.com',
-            address: '123 Test St, Demo City'
+            location: '123 Test St, Demo City'
         });
 
-        console.log('✅ Created Test Customer:', profile.name);
+        console.log('✅ Created Test Customer:', (profile as any).name);
 
     } catch (err) {
         console.error(err);

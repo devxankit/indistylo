@@ -307,14 +307,14 @@ export function ContentManagement() {
                       {service.name}
                     </h3>
                     <p className="text-muted-foreground text-xs">
-                      ₹{service.price} • {service.duration} mins
+                      {service.category} • {service.gender}
                     </p>
                   </div>
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       size="icon"
                       className="h-8 w-8 bg-black/50 hover:bg-red-600 text-white backdrop-blur-sm shadow-md"
-                      onClick={() => removeFeaturedService(service.id)}>
+                      onClick={() => removeFeaturedService(service._id || service.id || "")}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>

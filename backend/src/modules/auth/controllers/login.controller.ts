@@ -151,12 +151,12 @@ export const login = async (
     res.status(200).json({
       user: {
         _id: user._id,
-        name: profile?.name || profile?.businessName || "User",
+        name: (profile && 'name' in profile && profile.name) || (profile && 'businessName' in profile && profile.businessName) || "User",
         phone: user.phone,
         role: user.role,
-        email: user.email || profile?.email || "",
+        email: user.email || (profile && 'email' in profile && profile.email) || "",
         status: status,
-        isVerified: profile?.isVerified || false,
+        isVerified: (profile && 'isVerified' in profile && profile.isVerified) || false,
         profile: profile,
       },
       token: accessToken,
@@ -342,11 +342,11 @@ export const getMe = async (req: any, res: Response, next: NextFunction) => {
       profile,
       // For backward compatibility
       name:
-        profile?.name ||
-        profile?.ownerName ||
-        (profile as any)?.businessName ||
+        (profile && 'name' in profile && profile.name) ||
+        (profile && 'ownerName' in profile && profile.ownerName) ||
+        (profile && 'businessName' in profile && profile.businessName) ||
         "User",
-      email: profile?.email || user.email,
+      email: (profile && 'email' in profile && profile.email) || user.email,
     });
   } catch (error) {
     next(error);

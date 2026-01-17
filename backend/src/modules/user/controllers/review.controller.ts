@@ -39,7 +39,7 @@ export const submitReview = async (
         const review = await Review.create({
             user: req.user._id,
             salon: booking.salon,
-            service: booking.service,
+            ...(booking.service && { service: booking.service }),
             booking: booking._id,
             rating,
             comment,

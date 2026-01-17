@@ -222,7 +222,12 @@ export const verifyVendorDocument = async (
     const { documentId, status } = req.body;
     console.log('Verifying document:', { vendorId: req.params.id, documentId, status });
 
-    const vendorProfile = await Vendor.findOne({ user: req.params.id });
+    const userId = req.params.id;
+    if (!userId) {
+      res.status(400);
+      return next(new Error("User ID is required"));
+    }
+    const vendorProfile = await Vendor.findOne({ user: userId });
 
     if (!vendorProfile) {
       res.status(404);
@@ -261,7 +266,9 @@ export const verifyVendorDocument = async (
     if (allVerified) {
       vendorProfile.isVerified = true;
       vendorProfile.status = "active";
-      await Salon.updateOne({ vendor: req.params.id }, { isActive: true });
+      if (req.params.id) {
+        await Salon.updateOne({ vendor: req.params.id }, { isActive: true });
+      }
       await User.findByIdAndUpdate(req.params.id, { status: "active" });
       console.log('All documents verified. Vendor activated.');
     }

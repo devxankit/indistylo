@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, DirectionsRenderer, Marker } from "@react-google-maps/api";
 import { Loader2, Navigation } from "lucide-react";
 
@@ -27,20 +27,12 @@ export function MapRoute({ destination }: MapRouteProps) {
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
     });
 
-    const [map, setMap] = useState<google.maps.Map | null>(null);
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
     const [distance, setDistance] = useState<string>("");
     const [duration, setDuration] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
 
-    const onLoad = useCallback((map: google.maps.Map) => {
-        setMap(map);
-    }, []);
-
-    const onUnmount = useCallback(() => {
-        setMap(null);
-    }, []);
 
     // Get User Location
     useEffect(() => {
@@ -124,8 +116,6 @@ export function MapRoute({ destination }: MapRouteProps) {
                     mapContainerStyle={containerStyle}
                     center={userLocation || defaultCenter}
                     zoom={14}
-                    onLoad={onLoad}
-                    onUnmount={onUnmount}
                     options={{
                         styles: [ // Dark mode style
                             { elementType: "geometry", stylers: [{ color: "#242f3e" }] },

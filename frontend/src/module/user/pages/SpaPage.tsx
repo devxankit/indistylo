@@ -1,16 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useRef, useState, useEffect } from "react";
 import Autoplay from "embla-carousel-autoplay";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
-import { Filter, MapPin, Search, Star, Loader2 } from "lucide-react";
+import { Filter, Search, Star, Loader2 } from "lucide-react";
 import { useSalonStore } from "../store/useSalonStore";
 import { useContentStore } from "@/module/admin/store/useContentStore";
 import { useUserCategoryStore } from "../store/useUserCategoryStore";
@@ -18,13 +16,8 @@ import { useServiceStore } from "../store/useServiceStore";
 import { usePackageStore } from "../store/usePackageStore";
 import { useCartStore } from "../store/useCartStore";
 import { PackageCard } from "../components/PackageCard";
-import carousel1 from "@/assets/heropage/carousel/carousel1.png";
-import carousel2 from "@/assets/heropage/carousel/carousel2.png";
-import carousel3 from "@/assets/heropage/carousel/carousel3.png";
-import salonInterior1 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-35.png";
-import salonInterior2 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-39.png";
-import salonInterior3 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-42.png";
-import salonInterior4 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-44.png";
+
+
 
 export function SpaPage() {
   const navigate = useNavigate();
@@ -84,14 +77,7 @@ export function SpaPage() {
     navigate("/order-summary");
   };
 
-  const spaSalons = salons.filter((salon) => salon.category?.includes("Spa"));
 
-  const spaImages = [
-    salonInterior1,
-    salonInterior2,
-    salonInterior3,
-    salonInterior4,
-  ];
 
   // Flatten subcategories from all header groups for the icons grid
   const currentSubcategories = categories
@@ -118,22 +104,7 @@ export function SpaPage() {
       return orderA - orderB;
     });
 
-  const filteredSpas = spaSalons.filter((salon) => {
-    const matchesSearch =
-      searchQuery.trim() === "" ||
-      salon.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-      salon.location.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-      (salon.category &&
-        salon.category.some((cat) =>
-          cat.toLowerCase().includes(searchQuery.toLowerCase().trim())
-        ));
 
-    const matchesCategory =
-      selectedCategory === "All" ||
-      (salon.category && salon.category.includes(selectedCategory));
-
-    return matchesSearch && matchesCategory;
-  });
 
   // Filter services based on search query, category, and gender
   const filteredServices = services.filter((service) => {

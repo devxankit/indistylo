@@ -1,11 +1,15 @@
 import type { Request, Response, NextFunction } from "express";
 import Notification from "../../../models/notification.model.js";
 
+interface AuthRequest extends Request {
+    user?: any;
+}
+
 // @desc    Get all user notifications
 // @route   GET /api/user/notifications
 // @access  Private
 export const getUserNotifications = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
@@ -39,7 +43,7 @@ export const getUserNotifications = async (
 // @route   PATCH /api/user/notifications/:id/read
 // @access  Private
 export const markAsRead = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
@@ -65,7 +69,7 @@ export const markAsRead = async (
 // @route   PATCH /api/user/notifications/read-all
 // @access  Private
 export const markAllAsRead = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
@@ -85,7 +89,7 @@ export const markAllAsRead = async (
 // @route   DELETE /api/user/notifications/:id
 // @access  Private
 export const deleteNotification = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
@@ -110,7 +114,7 @@ export const deleteNotification = async (
 // @route   DELETE /api/user/notifications/clear-all
 // @access  Private
 export const clearAllNotifications = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {

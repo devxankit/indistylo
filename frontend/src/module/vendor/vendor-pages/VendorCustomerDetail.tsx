@@ -10,18 +10,16 @@ import {
   Star,
   Edit3,
   Clock,
-  CheckCircle2,
   TrendingUp,
   History,
   AlertCircle,
   User,
   ShieldCheck,
-  ChevronRight,
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
+import { transitions } from "@/lib/animations";
 import { useCustomerStore, type Customer } from "../store/useCustomerStore";
 import { CustomerEditModal } from "../vendor-components/CustomerEditModal";
 import { format } from "date-fns";
@@ -92,6 +90,9 @@ export function VendorCustomerDetail() {
       </div>
     );
   }
+
+  // TypeScript null safety: customer is guaranteed to be non-null here
+  if (!customer) return null;
 
   return (
     <div className="min-h-screen bg-background pb-32">
@@ -246,7 +247,7 @@ export function VendorCustomerDetail() {
             {activeTab === 'history' && (
               <div className="space-y-3">
                 {customer.bookings && customer.bookings.length > 0 ? (
-                  customer.bookings.map((booking, idx) => (
+                  customer.bookings.map((booking) => (
                     <div key={booking._id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/30 transition-all group">
                       <div className="w-12 h-12 rounded-xl bg-white/5 border border-border flex flex-col items-center justify-center leading-none">
                         <span className="text-[10px] font-bold text-primary uppercase">{format(new Date(booking.date), "MMM")}</span>
