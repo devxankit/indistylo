@@ -258,11 +258,11 @@ export function SpaPage() {
 
         {/* Subcategories Grid */}
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
             {currentSubcategories.map((sub, index) => (
               <Card
                 key={sub.id}
-                className="cursor-pointer hover:bg-muted transition-colors overflow-hidden bg-transparent border-transparent p-0 animate-in fade-in zoom-in duration-500"
+                className="min-w-[100px] max-w-[100px] flex-shrink-0 cursor-pointer hover:bg-muted transition-colors overflow-hidden bg-transparent border-transparent p-0 animate-in fade-in zoom-in duration-500"
                 style={{ animationDelay: `${index * 50}ms` }}>
                 <CardContent className="p-0 text-center">
                   <div className="aspect-square rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden border border-white/5 mx-auto w-full">
@@ -273,7 +273,7 @@ export function SpaPage() {
                     />
                   </div>
                   <div className="px-1 pt-2">
-                    <p className="text-[10px] font-bold text-foreground leading-tight line-clamp-2">
+                    <p className="text-xs font-bold text-foreground leading-tight line-clamp-2">
                       {sub.name}
                     </p>
                   </div>

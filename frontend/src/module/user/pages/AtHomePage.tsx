@@ -265,22 +265,23 @@ export function AtHomePage() {
         {/* Categories Grid */}
         <div className="space-y-4">
           {/* Service Cards Grid - Sub Categories */}
-          <div className="grid grid-cols-4 gap-2">
+          {/* Service Cards Grid - Sub Categories */}
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
             {currentCategories.map((service, index) => (
               <Card
                 key={service.id}
-                className="cursor-pointer hover:bg-muted transition-colors overflow-hidden bg-transparent border-transparent p-0 animate-in fade-in zoom-in duration-500"
+                className="min-w-[100px] max-w-[100px] flex-shrink-0 cursor-pointer hover:bg-muted transition-colors overflow-hidden bg-transparent border-transparent p-0 animate-in fade-in zoom-in duration-500"
                 style={{ animationDelay: `${index * 50}ms` }}>
                 <CardContent className="p-0">
-                  <div className="aspect-square rounded-md bg-primary/10 flex items-center justify-center overflow-hidden">
+                  <div className="aspect-square rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden">
                     <img
                       src={service.image}
                       alt={service.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="px-2 pt-2 text-center">
-                    <p className="text-sm font-medium text-foreground">
+                  <div className="px-1 pt-2 text-center">
+                    <p className="text-xs font-medium text-foreground line-clamp-2 leading-tight">
                       {service.name}
                     </p>
                   </div>
