@@ -26,9 +26,24 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 1. CORS - Must be first to handle preflight requests
+const allowedOrigins = [
+  "https://www.indistylo.com",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
 app.use(
   cors({
-    origin: true, // Allow all origins for debugging
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
@@ -76,6 +91,11 @@ app.use("/api/bookings/reviews", reviewRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/packages", publicPackageRoutes);
+
+// Root route for easy health check
+app.get("/", (req, res) => {
+  res.status(200).send("IndiStylo Backend Running");
+});
 
 // Health check
 app.get("/health", (req, res) => {
