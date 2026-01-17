@@ -15,7 +15,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   // Get token from localStorage (Zustand persist)
   const userStorage = localStorage.getItem("user-storage");
   const vendorStorage = localStorage.getItem("vendor-storage");
-  const adminStorage = localStorage.getItem("admin-storage");
+  const adminStorage = localStorage.getItem("admin-storage-v2");
 
   let token = null;
 
