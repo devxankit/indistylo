@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -10,35 +10,112 @@ import {
   Minus,
   ShoppingBag,
 } from "lucide-react";
-import { mockSalons } from "../services/mockData";
-import { salonServiceCatalog } from "../services/salonDetailsData";
 import salonInterior1 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-35.png";
 import salonInterior2 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-39.png";
 import salonInterior3 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-42.png";
 import salonInterior4 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-44.png";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "../store/useCartStore";
+import { useSalonStore } from "../store/useSalonStore";
+import { useServiceStore } from "../store/useServiceStore";
 import { SelectProfessionalDialog } from "../components/SelectProfessionalDialog";
 import type { Professional } from "../services/types";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 export function ShopDetailsPage() {
   const navigate = useNavigate();
   const { salonId } = useParams<{ salonId: string }>();
   const { items, addItem, updateQuantity, getItemTotal } = useCartStore();
-  const fallbackSalon = mockSalons[0];
-  const salon = mockSalons.find((item) => item.id === salonId) ?? fallbackSalon;
+  const {
+    currentSalon: salon,
+    loading: salonLoading,
+    fetchSalonById,
+  } = useSalonStore();
+  const {
+    services,
+    loading: servicesLoading,
+    fetchServices,
+  } = useServiceStore();
 
-  const defaultGender: "male" | "female" =
-    salon.gender === "male" ? "male" : "female";
+  useEffect(() => {
+    if (salonId) {
+      fetchSalonById(salonId);
+      fetchServices({ salonId });
+    }
+  }, [salonId, fetchSalonById, fetchServices]);
+
   const [selectedGender, setSelectedGender] = useState<"male" | "female">(
-    defaultGender
+    "female"
   );
+
+  useEffect(() => {
+    if (salon) {
+      setSelectedGender(salon.gender === "male" ? "male" : "female");
+    }
+  }, [salon]);
+
+  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    }
+  }, []);
+
   const [search, setSearch] = useState("");
-  const catalog = salonServiceCatalog[selectedGender];
-  const [activeCategoryId, setActiveCategoryId] = useState(
-    catalog[0]?.id ?? ""
-  );
+
+  // Group services by category for the current selected gender
+  const catalog = useMemo(() => {
+    const filteredServices = services.filter(
+      (s) => s.gender === selectedGender || s.gender === "unisex"
+    );
+
+    const categoriesMap = new Map<string, any>();
+
+    filteredServices.forEach((service) => {
+      if (!categoriesMap.has(service.category)) {
+        categoriesMap.set(service.category, {
+          id: service.category.toLowerCase().replace(/\s+/g, "-"),
+          name: service.category,
+          image:
+            service.image ||
+            "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&auto=format&fit=crop&q=60", // Fallback image
+          services: [],
+        });
+      }
+
+      const category = categoriesMap.get(service.category);
+      category.services.push({
+        id: service._id,
+        title: service.name,
+        duration: `${service.duration} min.`,
+        highlights: service.highlights || [],
+        priceLabel: `₹${service.price}`,
+        price: service.price,
+      });
+    });
+
+    return Array.from(categoriesMap.values());
+  }, [services, selectedGender]);
+
+  const [activeCategoryId, setActiveCategoryId] = useState("");
+
+  useEffect(() => {
+    if (catalog.length > 0 && !activeCategoryId) {
+      setActiveCategoryId(catalog[0].id);
+    }
+  }, [catalog, activeCategoryId]);
 
   const [isProDialogOpen, setIsProDialogOpen] = useState(false);
   const [selectedServiceForPro, setSelectedServiceForPro] = useState<any>(null);
@@ -52,7 +129,7 @@ export function ShopDetailsPage() {
 
   const servicesToShow = useMemo(() => {
     if (!activeCategory) return [];
-    return activeCategory.services.filter((service) =>
+    return activeCategory.services.filter((service: any) =>
       service.title.toLowerCase().includes(search.toLowerCase().trim())
     );
   }, [activeCategory, search]);
@@ -63,22 +140,40 @@ export function ShopDetailsPage() {
     salonInterior3,
     salonInterior4,
   ];
-  const heroImage = interiorImages[salon.id.length % interiorImages.length];
+  const heroImage =
+    salon?.images?.[0] ||
+    interiorImages[salon ? salon._id.length % interiorImages.length : 0];
 
   const handleAddService = (service: any) => {
     setSelectedServiceForPro(service);
     setIsProDialogOpen(true);
   };
 
+  if (salonLoading || (servicesLoading && services.length === 0)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!salon) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <h2 className="text-xl font-bold mb-4">Salon not found</h2>
+        <Button onClick={() => navigate(-1)}>Go Back</Button>
+      </div>
+    );
+  }
+
   const handleProfessionalSelect = (professional: Professional) => {
     if (!selectedServiceForPro) return;
 
-    // Convert salon service format to AtHomeServicePackage format for the store
     const cartItem = {
       id: selectedServiceForPro.id,
       title: selectedServiceForPro.title,
-      price: parseInt(selectedServiceForPro.priceLabel.replace(/[^0-9]/g, "")),
-      image: "", // No image in catalog currently
+      price: selectedServiceForPro.price,
+      image: "",
       duration: selectedServiceForPro.duration,
       category: activeCategory?.name || "",
     };
@@ -89,6 +184,7 @@ export function ShopDetailsPage() {
       cartItem as any,
       1,
       selectedGender,
+      salonId,
       salon.name,
       "at-salon",
       isAnyProfessional ? undefined : professional.id,
@@ -107,6 +203,25 @@ export function ShopDetailsPage() {
       .filter((item) => item.id === serviceId)
       .reduce((acc, item) => acc + item.quantity, 0);
   };
+
+
+  const calculateDistance = (salonGeo: { coordinates: [number, number] }) => {
+    if (!userLocation || !salonGeo || !salonGeo.coordinates) return null;
+
+    const [salonLng, salonLat] = salonGeo.coordinates;
+    const R = 6371; // km
+    const dLat = (salonLat - userLocation.lat) * Math.PI / 180;
+    const dLon = (salonLng - userLocation.lng) * Math.PI / 180;
+    const lat1 = userLocation.lat * Math.PI / 180;
+    const lat2 = salonLat * Math.PI / 180;
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return (R * c).toFixed(2);
+  };
+
+  const distance = salon ? calculateDistance(salon.geo) : null;
 
   return (
     <div className="min-h-screen bg-background pb-24 text-foreground">
@@ -140,7 +255,7 @@ export function ShopDetailsPage() {
                 </h4>
               </div>
               <p className="text-sm text-muted-foreground leading-snug">
-                {salon.distance.toFixed(2)} Km • {salon.location}
+                {distance ? `${distance} Km • ` : ""}{salon.location}
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
@@ -269,7 +384,9 @@ export function ShopDetailsPage() {
                 style={{ animationDelay: `${index * 50}ms` }}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-semibold group-hover:text-yellow-400 transition-colors">{service.title}</h3>
+                    <h3 className="text-base font-semibold group-hover:text-yellow-400 transition-colors">
+                      {service.title}
+                    </h3>
                     <p className="text-sm text-left text-muted-foreground mt-1">
                       {service.duration}
                     </p>
@@ -291,7 +408,7 @@ export function ShopDetailsPage() {
                     ) : (
                       <div className="flex items-center gap-3 bg-yellow-400 rounded-full px-2 py-1">
                         <button
-                          // Note: Decreasing will just remove instances sequentially. 
+                          // Note: Decreasing will just remove instances sequentially.
                           // A proper UI would allow editing from cart or re-opening selection
                           onClick={(e) => {
                             e.stopPropagation();
@@ -366,6 +483,7 @@ export function ShopDetailsPage() {
         isOpen={isProDialogOpen}
         onClose={() => setIsProDialogOpen(false)}
         onSelect={handleProfessionalSelect}
+        salonId={salonId}
       />
     </div>
   );

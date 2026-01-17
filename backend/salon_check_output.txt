@@ -1,0 +1,14 @@
+Connected to MongoDB
+Checking Salon ID: 69647ec7658f9dfe76df65e6
+NOT FOUND in Salons or Spas collection. This ID appears to be missing from the database, but we will seed Schedule/Staff for it anyway.
+Schedules found: 7
+ - Day 0: Working=true
+ - Day 1: Working=true
+ - Day 2: Working=true
+ - Day 3: Working=true
+ - Day 4: Working=true
+ - Day 5: Working=true
+ - Day 6: Working=true
+Staff found: 0
+Creating Default Staff...
+Created default staff member for TARGET_ID.

@@ -10,7 +10,7 @@ interface DayScheduleCardProps {
   schedule: Schedule;
   onToggleWorking: () => void;
   onUpdateHours: (startTime: string, endTime: string) => void;
-  onAddBreak: (breakData: Omit<import("../store/useScheduleStore").Break, "id">) => void;
+  onAddBreak: (breakData: Omit<import("../store/useScheduleStore").Break, "_id">) => void;
   onUpdateBreak: (breakId: string, updates: Partial<import("../store/useScheduleStore").Break>) => void;
   onRemoveBreak: (breakId: string) => void;
 }
@@ -111,12 +111,12 @@ export function DayScheduleCard({
                     <div className="space-y-2">
                       {schedule.breaks.map((breakItem) => (
                         <BreakItem
-                          key={breakItem.id}
+                          key={breakItem._id}
                           breakData={breakItem}
                           onUpdate={(updates) =>
-                            onUpdateBreak(breakItem.id, updates)
+                            onUpdateBreak(breakItem._id, updates)
                           }
-                          onDelete={() => onRemoveBreak(breakItem.id)}
+                          onDelete={() => onRemoveBreak(breakItem._id)}
                         />
                       ))}
                     </div>

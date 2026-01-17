@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
+import { toast } from 'sonner';
 import { Wallet, ArrowDown, ArrowUp, Download, CreditCard, History, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -7,74 +8,20 @@ import { useSwipe } from '@/lib/touch';
 import { useCountUp } from '@/hooks/useCountUp';
 import { ListItemSkeleton } from '@/components/ui/skeleton';
 
-const formatPoints = (points: number) => {
-  if (points >= 1000) {
-    return `${(points / 1000).toFixed(points >= 995 ? 0 : 1)}k`;
-  }
-  return points.toString();
-};
+import { useVendorEarningsStore } from '../store/useVendorEarningsStore';
+import { useVendorBookingStore } from '../store/useVendorBookingStore';
+import { format } from 'date-fns';
 
-const transactions = [
-  {
-    id: '1',
-    type: 'credit',
-    amount: 500,
-    description: 'Service completed - Haircut & Styling',
-    date: '2024-01-15',
-    time: '10:30 AM',
-    customer: 'Rajesh Kumar',
-    status: 'completed',
-  },
-  {
-    id: '2',
-    type: 'credit',
-    amount: 300,
-    description: 'Service completed - Beard Trim',
-    date: '2024-01-14',
-    time: '2:15 PM',
-    customer: 'Amit Singh',
-    status: 'completed',
-  },
-  {
-    id: '3',
-    type: 'debit',
-    amount: 200,
-    description: 'Withdrawal to bank account',
-    date: '2024-01-13',
-    time: '11:00 AM',
-    customer: null,
-    status: 'processed',
-  },
-  {
-    id: '4',
-    type: 'credit',
-    amount: 1299,
-    description: 'Service completed - Hair Color & Treatment',
-    date: '2024-01-12',
-    time: '3:45 PM',
-    customer: 'Priya Sharma',
-    status: 'completed',
-  },
-  {
-    id: '5',
-    type: 'credit',
-    amount: 899,
-    description: 'Service completed - Facial Treatment',
-    date: '2024-01-11',
-    time: '1:20 PM',
-    customer: 'Sneha Patel',
-    status: 'completed',
-  },
-];
+
 
 type FilterType = 'all' | 'credit' | 'debit';
 
 // Memoized transaction card component
-const TransactionCard = memo(({ 
+const TransactionCard = memo(({
   transaction,
-  onSwipeLeft 
-}: { 
-  transaction: typeof transactions[0];
+  onSwipeLeft
+}: {
+  transaction: any;
   onSwipeLeft?: () => void;
 }) => {
   const swipeHandlers = useSwipe({
@@ -188,34 +135,88 @@ export function VendorWallet() {
     }
   }, [filter]);
 
-  const balance = 12500;
-  const points = Math.floor(balance / 10);
+  const {
+    totalEarnings,
+    // totalWithdrawn,
+    // totalPending,
+    availableBalance,
+    commissionRate,
+    payoutHistory,
+    fetchEarnings,
+    requestPayout,
+    // loading: earningsLoading
+  } = useVendorEarningsStore();
 
-  const filteredTransactions = useMemo(() => 
-    filter === 'all' 
-    ? transactions 
-      : transactions.filter(t => t.type === filter),
-    [filter]
-  );
+  const {
+    bookings,
+    fetchBookings,
+    // loading: bookingsLoading
+  } = useVendorBookingStore();
 
-  const totalEarnings = useMemo(() =>
-    transactions
-    .filter(t => t.type === 'credit')
-      .reduce((sum, t) => sum + t.amount, 0),
-    []
-  );
+  useEffect(() => {
+    fetchEarnings();
+    fetchBookings();
+  }, [fetchEarnings, fetchBookings]);
 
-  const totalWithdrawals = useMemo(() =>
-    transactions
-    .filter(t => t.type === 'debit')
-      .reduce((sum, t) => sum + t.amount, 0),
-    []
+  // Consolidate and sort transactions
+  const transactions = useMemo(() => {
+    // 1. Process Bookings (Credits)
+    // Only completed bookings usually count towards wallet, but for now we list them all or filter by 'completed' if needed.
+    // Assuming backend only calculates earnings from 'completed' bookings.
+    // For the list, we show completed bookings as credits.
+    const credits = bookings
+      .filter(b => b.status === 'completed')
+      .map(b => ({
+        id: b._id,
+        type: 'credit',
+        amount: b.amount, // Or vendor earnings if available
+        description: `Service completed - ${b.serviceName}`,
+        date: b.date,
+        time: b.time,
+        customer: b.customerName,
+        status: b.status,
+        timestamp: new Date(`${b.date}T12:00:00`).getTime() // Approximate for sorting if exact time string parsing is complex
+      }));
+
+    // 2. Process Payouts (Debits)
+    const debits = (payoutHistory || []).map(p => {
+      const dateObj = new Date(p.createdAt);
+      return {
+        id: p._id,
+        type: 'debit',
+        amount: p.amount,
+        description: 'Withdrawal to bank account',
+        date: format(dateObj, 'yyyy-MM-dd'),
+        time: format(dateObj, 'hh:mm a'),
+        customer: null,
+        status: p.status,
+        timestamp: dateObj.getTime()
+      };
+    });
+
+    // Merge and sort by timestamp desc
+    return [...credits, ...debits].sort((a, b) => b.timestamp - a.timestamp);
+  }, [bookings, payoutHistory]);
+
+
+  const balance = availableBalance || 0;
+
+
+  // Use dynamic values for summary
+  const summaryEarnings = totalEarnings || 0;
+  const summaryWithdrawals = summaryEarnings - balance;
+
+  const filteredTransactions = useMemo(() =>
+    filter === 'all'
+      ? transactions
+      : transactions.filter((t: any) => t.type === filter),
+    [filter, transactions]
   );
 
   const animatedBalance = useCountUp(balance, { duration: 1500 });
-  const animatedEarnings = useCountUp(totalEarnings, { duration: 1500 });
-  const animatedWithdrawals = useCountUp(totalWithdrawals, { duration: 1500 });
-  const animatedPoints = useCountUp(points, { duration: 1500 });
+  const animatedEarnings = useCountUp(summaryEarnings, { duration: 1500 });
+  const animatedWithdrawals = useCountUp(summaryWithdrawals, { duration: 1500 });
+
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
@@ -229,19 +230,19 @@ export function VendorWallet() {
         >
           {/* Background gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
-          
+
           <div className="relative z-10">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
                 <motion.div
                   className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg"
                   animate={{ rotate: [0, 5, -5, 0] }}
                   transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
                 >
-                <Wallet className="w-7 h-7 text-primary" />
+                  <Wallet className="w-7 h-7 text-primary" />
                 </motion.div>
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">Total Balance</p>
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">Current Balance</p>
                   <motion.p
                     key={animatedBalance}
                     initial={{ scale: 1.1 }}
@@ -251,41 +252,40 @@ export function VendorWallet() {
                   >
                     ₹{animatedBalance.toLocaleString()}
                   </motion.p>
+                </div>
               </div>
             </div>
-          </div>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
               <motion.div
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ ...transitions.smooth, delay: 0.1 }}
               >
-              <p className="text-xs text-muted-foreground mb-1">IndiStylo Points</p>
+                <p className="text-xs text-muted-foreground mb-1">Lifetime Earning</p>
                 <motion.p
-                  key={animatedPoints}
+                  key={animatedEarnings}
                   initial={{ scale: 1.1 }}
                   animate={{ scale: 1 }}
                   transition={transitions.quick}
                   className="text-xl font-bold text-foreground"
                 >
-                  {formatPoints(animatedPoints)} ISP
+                  ₹{animatedEarnings.toLocaleString()}
                 </motion.p>
               </motion.div>
               <motion.div
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ ...transitions.smooth, delay: 0.2 }}
               >
-              <p className="text-xs text-muted-foreground mb-1">Available</p>
+                <p className="text-xs text-muted-foreground mb-1">Commission Rate</p>
                 <motion.p
-                  key={animatedBalance}
                   initial={{ scale: 1.1 }}
                   animate={{ scale: 1 }}
                   transition={transitions.quick}
                   className="text-xl font-bold text-primary"
                 >
-                  ₹{animatedBalance.toLocaleString()}
+                  {commissionRate}%
                 </motion.p>
               </motion.div>
             </div>
@@ -344,7 +344,7 @@ export function VendorWallet() {
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 2 }}
             >
-            <CreditCard className="w-5 h-5 text-primary" />
+              <CreditCard className="w-5 h-5 text-primary" />
             </motion.div>
           </div>
           <div className="space-y-2">
@@ -437,7 +437,7 @@ export function VendorWallet() {
 
         {/* Transactions List */}
         {isLoading ? (
-        <div className="space-y-3">
+          <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <ListItemSkeleton key={i} />
             ))}
@@ -449,18 +449,18 @@ export function VendorWallet() {
             animate="visible"
             className="space-y-3"
           >
-          <AnimatePresence mode="popLayout">
-            {filteredTransactions.map((transaction) => (
+            <AnimatePresence mode="popLayout">
+              {filteredTransactions.map((transaction) => (
                 <TransactionCard
-                key={transaction.id}
+                  key={transaction.id}
                   transaction={transaction}
                   onSwipeLeft={() => {
                     // Handle swipe action
                     console.log('Swipe left on transaction', transaction.id);
                   }}
                 />
-            ))}
-          </AnimatePresence>
+              ))}
+            </AnimatePresence>
           </motion.div>
         )}
       </div>
@@ -474,8 +474,8 @@ export function VendorWallet() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={transitions.quick}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end"
-            onClick={() => setShowWithdrawModal(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end"
+              onClick={() => setShowWithdrawModal(false)}
             />
             <motion.div
               initial={{ y: '100%' }}
@@ -489,7 +489,7 @@ export function VendorWallet() {
               <div className="flex justify-center mb-2">
                 <div className="w-12 h-1.5 bg-muted-foreground/40 rounded-full" />
               </div>
-              
+
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-foreground">Withdraw Funds</h2>
                 <motion.button
@@ -525,8 +525,15 @@ export function VendorWallet() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
-                    console.log('Withdraw:', withdrawAmount);
-                    setShowWithdrawModal(false);
+                    requestPayout(parseFloat(withdrawAmount))
+                      .then(() => {
+                        toast.success("Payout requested successfully");
+                        setShowWithdrawModal(false);
+                        setWithdrawAmount('');
+                      })
+                      .catch((err) => {
+                        toast.error(err.message || "Payout failed");
+                      });
                   }}
                   disabled={!withdrawAmount || parseFloat(withdrawAmount) > balance}
                   className={cn(

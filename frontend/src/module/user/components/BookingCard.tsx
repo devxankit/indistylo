@@ -3,19 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Home, Building2, User } from "lucide-react";
 
 interface Booking {
-  id: string;
-  salonName: string;
-  service: string;
+  _id: string;
+  salon: { name: string; _id: string };
+  service: { name: string; _id: string };
   date: string;
-  time: string;
+  timeSlot: string;
   status: "upcoming" | "completed" | "cancelled" | "missed";
-  type: "at-salon" | "at-home";
-  price?: number;
-  professionalName?: string;
+  type?: "at-salon" | "at-home";
+  price: number;
+  staff?: { name: string; _id: string };
 }
 
 interface BookingCardProps {
-  booking: Booking;
+  booking: any; // Using any for flexibility with store types
   onReschedule?: () => void;
   onCancel?: () => void;
   onBookAgain?: () => void;
@@ -35,6 +35,11 @@ export function BookingCard({
   const isCompleted = booking.status === "completed";
   const isCancelled = booking.status === "cancelled";
   const isMissed = booking.status === "missed";
+
+  const salonName = booking.salon?.name || "Salon";
+  const serviceName = booking.service?.name || "Service";
+  const professionalName = booking.staff?.name;
+  const time = booking.timeSlot || booking.time;
 
   const getStatusColor = () => {
     switch (booking.status) {
@@ -74,7 +79,7 @@ export function BookingCard({
                   <Building2 className="w-4 h-4 text-yellow-400" />
                 )}
                 <CardTitle className="text-base text-[#f5f5f5]">
-                  {booking.service}
+                  {serviceName}
                 </CardTitle>
               </div>
               <span
@@ -83,22 +88,22 @@ export function BookingCard({
               </span>
             </div>
             <p className="text-sm text-[#f5f5f5]/80 mb-2 text-left">
-              {booking.salonName}
+              {salonName}
             </p>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#f5f5f5]/60 mb-3">
               <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-yellow-400/60" />
-                <span>{booking.date}</span>
+                <span>{new Date(booking.date).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3 text-yellow-400/60" />
-                <span>{booking.time}</span>
+                <span>{time}</span>
               </div>
-              {booking.professionalName && (
+              {professionalName && (
                 <div className="flex items-center gap-1">
                   <User className="w-3 h-3 text-yellow-400/60" />
-                  <span>{booking.professionalName}</span>
+                  <span>{professionalName}</span>
                 </div>
               )}
             </div>

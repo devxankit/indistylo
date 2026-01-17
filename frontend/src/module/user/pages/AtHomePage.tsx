@@ -1,201 +1,190 @@
-import { useState } from "react";
-import { ChevronRight, Search, Star } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ServiceListing } from "../components/service-listing";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Search, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+import { useNavigate, useLocation } from "react-router-dom";
 import { useCartStore } from "../store/useCartStore";
-import femaleservice1 from "@/assets/atsalon/femaleservice1.png";
-import femaleservice2 from "@/assets/atsalon/femaleservice2.png";
-import femaleservice3 from "@/assets/atsalon/femaleservice3.png";
-import femaleservice4 from "@/assets/atsalon/femaleservice4.png";
-
-// Mock Data - Male Categories
-const maleCategories = [
-  {
-    id: 1,
-    name: "Haircut & styling",
-    image:
-      "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: 2,
-    name: "Facials & Cleanups",
-    image:
-      "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: 3,
-    name: "Shave & Beard",
-    image:
-      "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: 4,
-    name: "Hand & Feet",
-    image:
-      "https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&q=80&w=200",
-  },
-];
-
-// Mock Data - Female Categories
-const femaleCategories = [
-  { id: 1, name: "Haircut & styling", image: femaleservice1 },
-  { id: 2, name: "Facials & Cleanups", image: femaleservice2 },
-  { id: 3, name: "Hair Color & Treatment", image: femaleservice3 },
-  { id: 4, name: "Hand & Feet", image: femaleservice4 },
-];
-
-// Mock Data - Male Packages
-const malePackages = [
-  {
-    id: "1",
-    title: "Classic Grooming",
-    description: "Haircut & Beard/Shaving\n10 Minutes Head Massage",
-    offerDetails: "Offer Details",
-    price: "499",
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: "2",
-    title: "Premium Care",
-    description: "Haircut & Full Grooming\n15 Minute Spa Treatment",
-    offerDetails: "Offer Details",
-    price: "549",
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: "3",
-    title: "Elite Pamper",
-    description: "Complete Makeover\n30 Minute Massage & Treatment",
-    offerDetails: "Offer Details",
-    price: "799",
-    rating: 5.0,
-    image:
-      "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: "4",
-    title: "Luxury Package",
-    description: "Full Body Spa & Grooming\nPersonal Styling Session",
-    offerDetails: "Offer Details",
-    price: "999",
-    rating: 5.0,
-    image:
-      "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&q=80&w=200",
-  },
-];
-
-// Mock Data - Female Packages
-const femalePackages = [
-  {
-    id: "1",
-    title: "Classic Beauty",
-    description: "Haircut & Styling\n10 Minutes Head Massage",
-    offerDetails: "Offer Details",
-    price: "599",
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: "2",
-    title: "Premium Glow",
-    description: "Haircut & Full Styling\n15 Minute Facial Treatment",
-    offerDetails: "Offer Details",
-    price: "649",
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: "3",
-    title: "Elite Transformation",
-    description: "Complete Makeover\n30 Minute Spa & Treatment",
-    offerDetails: "Offer Details",
-    price: "899",
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=200",
-  },
-  {
-    id: "4",
-    title: "Luxury Package",
-    description: "Full Body Spa & Styling\nPersonal Beauty Session",
-    offerDetails: "Offer Details",
-    price: "1099",
-    rating: 5.0,
-    image:
-      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=200",
-  },
-];
+import { useContentStore } from "@/module/admin/store/useContentStore";
+import { useUserCategoryStore } from "../store/useUserCategoryStore";
+import { useServiceStore } from "../store/useServiceStore";
+import { usePackageStore } from "../store/usePackageStore";
+import { PackageCard } from "../components/PackageCard";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 
 export function AtHomePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addItem } = useCartStore();
+  const { banners, fetchContent } = useContentStore();
+  const {
+    categories,
+    selectedGender: storeGender,
+    setGender,
+  } = useUserCategoryStore();
+  const { services, fetchServices } = useServiceStore();
+  const { packages, fetchPackages } = usePackageStore();
+
   const [selectedGender, setSelectedGender] = useState<"male" | "female">(
     "male"
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
-  // Filter categories and packages based on selected gender
-  const currentCategories =
-    selectedGender === "male" ? maleCategories : femaleCategories;
-  const currentPackages =
-    selectedGender === "male" ? malePackages : femalePackages;
+  const autoplayPlugin = useRef(
+    Autoplay({ delay: 1500, stopOnInteraction: false, stopOnMouseEnter: false })
+  );
 
-  const handleBuyNow = (pkg: (typeof currentPackages)[0]) => {
-    const packageItem = {
-      id: pkg.id,
-      title: pkg.title,
-      description: pkg.description,
-      image: pkg.image,
-      price: parseInt(pkg.price),
-      duration: 60, // Default duration
-      overview: [],
-      howItWorks: [],
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
+
+  // Initialization: Sync from URL or Store on mount or URL change
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const genderParam = params.get("gender")?.toLowerCase();
+
+    if (genderParam === "male" || genderParam === "female") {
+      setSelectedGender(genderParam);
+      setGender(genderParam.toUpperCase() as "MALE" | "FEMALE");
+    } else {
+      // If no URL param, default to store value on mount
+      // We only do this check if we rarely expect store to be out of sync
+      // But to avoid overriding user's local toggle if this effect runs for other reasons,
+      // we should arguably not do this if we are handling store updates manually.
+      // However, ensures consistency on navigation.
+      if (storeGender) {
+        setSelectedGender(storeGender.toLowerCase() as "male" | "female");
+      }
+    }
+  }, [location.search, setGender, storeGender]);
+
+  // Fetch Data: Runs when selectedGender or URL params change
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const categoryParam = params.get("category");
+    const searchParam = params.get("search");
+
+    // Only update category from URL if it exists
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+
+    const filters: any = {
+      type: "at-home",
+      gender: selectedGender,
     };
-    addItem(packageItem, 1, selectedGender, "Home Service", "at-home");
+    if (categoryParam) filters.category = categoryParam;
+    if (searchParam) filters.search = searchParam;
+
+    fetchServices(filters);
+    fetchPackages({ type: "at-home", gender: selectedGender });
+  }, [fetchServices, fetchPackages, location.search, selectedGender]);
+
+  // Flatten subcategories from all header groups
+  const currentCategories = categories
+    .filter(
+      (group) =>
+        selectedCategory === "All" || group.headerName === selectedCategory
+    )
+    .flatMap((group) =>
+      group.subcategories.map((sub) => ({
+        id: sub._id,
+        name: sub.name,
+        image: sub.image,
+      }))
+    );
+
+  // Header categories for filter tabs
+  const headerCategories = categories
+    .map((group) => group.headerName)
+    .sort((a, b) => {
+      const orderA =
+        categories.find((g) => g.headerName === a)?.headerOrder || 0;
+      const orderB =
+        categories.find((g) => g.headerName === b)?.headerOrder || 0;
+      return orderA - orderB;
+    });
+
+  const handleAddToCart = (item: any, itemType: "service" | "package" = "service") => {
+    // Determine type based on item structure or current page context
+    // item could be a service or a package
+    // For AtHomePage, mostly 'at-home' type
+
+    // Construct cart item
+    // Note: item might have different structure. 
+    // If it's a service (from useServiceStore), it has '_id', 'name', 'price', etc.
+    // Package also has similar.
+
+    addItem(
+      item,
+      1, // quantity
+      selectedGender.toUpperCase() as "male" | "female", // category/gender
+      item.salon?._id || item.vendor?._id, // salonId from service.salon or package.vendor
+      item.salon?.name || item.vendor?.businessName, // salonName
+      "at-home", // type
+      undefined, // professionalId
+      undefined, // professionalName
+      itemType // itemType
+    );
     navigate("/order-summary");
   };
+
+  // Filter services based on search query, category, and gender (client side refinement if needed, though API handles it)
+  const filteredServices = services.filter((service) => {
+    // Ensure salon is populated
+    if (typeof service.salon === 'string') return false;
+    const salon = service.salon;
+
+    const matchesSearch =
+      searchQuery.trim() === "" ||
+      service.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+      salon.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+
+    const matchesCategory =
+      selectedCategory === "All" ||
+      service.category === selectedCategory ||
+      categories.some(g => g.headerName === selectedCategory && g.subcategories.some(s => s.name === service.name));
+
+    const matchesGender =
+      service.gender === "unisex" ||
+      service.gender === selectedGender;
+
+    return matchesSearch && matchesGender && (selectedCategory === "All" ? true : matchesCategory);
+  });
 
   return (
     <div className="min-h-screen bg-background pb-24 text-foreground">
       {/* Banner Section */}
-      <div className="relative w-full min-h-[200px] sm:h-64 overflow-hidden bg-gradient-to-r from-background to-secondary/20">
-        {/* Overlay for better text contrast */}
-        <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-transparent z-0"></div>
-        <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-6 sm:py-0 min-h-[200px] sm:h-full">
-          <div className="z-20 max-w-[65%] sm:max-w-[60%] space-y-2 pr-2">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-foreground">
-              Transform your look{" "}
-              <span className="text-primary">At-Home !</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-foreground/90">
-              Get professional grooming services with Billu's Salon App.
-            </p>
-          </div>
-          <div className="relative w-[35%] sm:w-[40%] h-full min-h-[200px] sm:min-h-0">
-            {/* Placeholder for the barber/stylist image from screenshot */}
-            <img
-              src={
-                selectedGender === "male"
-                  ? "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=400"
-                  : "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=400"
-              }
-              alt={selectedGender === "male" ? "Barber" : "Stylist"}
-              className="object-cover w-full h-full opacity-90 mask-image-gradient"
-              style={{
-                maskImage: "linear-gradient(to right, transparent, black 30%)",
-                WebkitMaskImage:
-                  "linear-gradient(to right, transparent, black 30%)",
-              }}
-            />
-          </div>
-        </div>
-      </div>
+      <Carousel
+        className="w-full md:w-4/5 md:mx-auto mt-2"
+        opts={{
+          align: "start",
+          loop: true,
+        }}
+        plugins={[autoplayPlugin.current]}>
+        <CarouselContent>
+          {banners
+            .filter((b) => b.active)
+            .map((banner) => (
+              <CarouselItem key={banner._id || banner.id}>
+                <div className="rounded-2xl overflow-hidden mx-4">
+                  <img
+                    src={banner.image}
+                    alt="Promo Banner"
+                    className="w-full h-auto object-cover"
+                  />
+                </div>
+              </CarouselItem>
+            ))}
+        </CarouselContent>
+        {/* Arrows hidden for mobile usually, but kept for desktop if needed */}
+      </Carousel>
 
       <div className="px-4 mt-6 space-y-8">
         {/* Search Bar */}
@@ -204,10 +193,29 @@ export function AtHomePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search for At-Home services..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-12 pl-10 pr-4 rounded-xl bg-card border border-border focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
             />
           </div>
+        </div>
+
+        {/* Header Category Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {["All", ...headerCategories].map((category) => (
+            <Button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              variant="outline"
+              size="sm"
+              className={`whitespace-nowrap ${selectedCategory === category
+                ? "!bg-yellow-400 !text-gray-900 !border-yellow-400 hover:!bg-yellow-400 hover:!text-gray-900"
+                : "text-foreground hover:text-yellow-400 hover:border-yellow-400"
+                }`}>
+              {category}
+            </Button>
+          ))}
         </div>
 
         {/* Gender Selection */}
@@ -217,141 +225,188 @@ export function AtHomePage() {
           </h3>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setSelectedGender("male")}
+              onClick={() => {
+                setSelectedGender("male");
+                setGender("MALE");
+              }}
               className={`px-2 py-1 text-sm font-medium transition-colors ${selectedGender === "male"
-                  ? "text-foreground"
-                  : "text-muted-foreground"
+                ? "text-foreground"
+                : "text-muted-foreground"
                 }`}>
               Male
             </button>
             <div
               className={`relative w-11 h-6 rounded-full transition-all duration-300 cursor-pointer ${selectedGender === "male" ? "bg-primary" : "bg-primary"
                 }`}
-              onClick={() =>
-                setSelectedGender(selectedGender === "male" ? "female" : "male")
-              }>
+              onClick={() => {
+                const newGender = selectedGender === "male" ? "female" : "male";
+                setSelectedGender(newGender);
+                setGender(newGender.toUpperCase() as "MALE" | "FEMALE");
+              }}>
               <div
                 className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${selectedGender === "male" ? "left-0.5" : "left-[22px]"
                   }`}
               />
             </div>
             <button
-              onClick={() => setSelectedGender("female")}
+              onClick={() => {
+                setSelectedGender("female");
+                setGender("FEMALE");
+              }}
               className={`px-3 py-1 text-sm font-medium transition-colors ${selectedGender === "female"
-                  ? "text-foreground"
-                  : "text-muted-foreground"
+                ? "text-foreground"
+                : "text-muted-foreground"
                 }`}>
               Female
             </button>
           </div>
         </div>
 
-        {/* Categories */}
+        {/* Categories Grid */}
         <div className="space-y-4">
-          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-            {currentCategories.map((cat) => (
-              <div
-                key={cat.id}
-                className="flex flex-col items-center gap-2 min-w-[100px] cursor-pointer group">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-card border border-border group-hover:border-primary transition-colors">
-                  <img
-                    src={cat.image}
-                    alt={cat.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <span
-                  className={cn(
-                    "text-xs text-center font-medium",
-                    cat.id === 1 ? "text-primary" : "text-muted-foreground"
-                  )}>
-                  {cat.name}
-                </span>
-              </div>
+          {/* Service Cards Grid - Sub Categories */}
+          <div className="grid grid-cols-4 gap-2">
+            {currentCategories.map((service, index) => (
+              <Card
+                key={service.id}
+                className="cursor-pointer hover:bg-muted transition-colors overflow-hidden bg-transparent border-transparent p-0 animate-in fade-in zoom-in duration-500"
+                style={{ animationDelay: `${index * 50}ms` }}>
+                <CardContent className="p-0">
+                  <div className="aspect-square rounded-md bg-primary/10 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={service.image}
+                      alt={service.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="px-2 pt-2 text-center">
+                    <p className="text-sm font-medium text-foreground">
+                      {service.name}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
 
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-100">
-              Grab Exciting Packages
-            </h2>
-            <button className="text-yellow-400 hover:text-yellow-300 transition-colors flex items-center gap-1 text-sm font-medium">
-              View All <ChevronRight className="w-4 h-4" />
-            </button>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold">Featured Services</h3>
+            <span className="text-xs text-muted-foreground bg-card px-3 py-1 rounded-full border border-border">
+              {filteredServices.length} Services
+            </span>
           </div>
 
-          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
-            {currentPackages.map((pkg, index) => (
-              <div
-                key={pkg.id}
-                className="flex-shrink-0 w-[280px] bg-[#1a1a1a] border border-gray-800 rounded-2xl p-5 flex flex-col hover:border-yellow-400/30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500"
-                style={{ animationDelay: `${index * 100}ms` }}>
-                <div className="flex flex-col h-full">
-                  {/* Header */}
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold text-gray-100 text-left line-clamp-1">
-                      {pkg.title}
-                    </h3>
-                    <div className="flex items-center gap-1 bg-yellow-400/10 px-2 py-0.5 rounded-full">
-                      <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                      <span className="text-xs font-bold text-yellow-400">
-                        {pkg.rating}
-                      </span>
-                    </div>
-                  </div>
+          <div className="space-y-4 md:grid md:grid-cols-3 md:gap-4 md:space-y-0">
+            {filteredServices.length > 0 ? (
+              filteredServices.map((service, index) => {
+                // Type assertion since we filter out strings earlier
+                if (typeof service.salon === 'string') return null;
+                const salon = service.salon;
+                // Prefer service image, fallback to first salon image, then placeholder
+                const displayImage = service.image || (salon.images && salon.images.length > 0
+                  ? salon.images[0]
+                  : "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=800");
 
-                  {/* Description */}
-                  <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-line mb-3 flex-grow text-left">
-                    {pkg.description}
-                  </p>
+                return (
+                  <Card
+                    key={service._id}
+                    className="group cursor-pointer bg-[#1A1A1A] border border-white/5 text-white hover:bg-[#202020] hover:border-yellow-500/20 transition-all duration-300 py-3 px-3 animate-in fade-in slide-in-from-bottom-4 rounded-xl shadow-md hover:shadow-xl hover:shadow-yellow-900/10"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                    onClick={() => navigate(`/shops/${salon._id}`)}
+                  >
+                    <CardContent className="p-0">
+                      <div className="flex gap-4">
+                        {/* Service/Salon Image */}
+                        <div className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden shadow-inner relative group-hover:scale-[1.02] transition-transform duration-500">
+                          <img
+                            src={displayImage}
+                            alt={salon.name}
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Rating Badge on Image */}
+                          <div className="absolute bottom-1 right-1 bg-black/70 backdrop-blur-[2px] px-1.5 py-0.5 rounded text-[10px] font-bold text-yellow-500 flex items-center gap-0.5 border border-white/10">
+                            <Star className="w-2.5 h-2.5 fill-yellow-500" />
+                            <span>{salon.rating || "4.8"}</span>
+                          </div>
+                        </div>
 
-                  {/* Offer Link */}
-                  <div className="text-yellow-400 bg-transparent text-sm font-medium mb-4 hover:text-yellow-300 transition-colors text-left align-left">
-                    {pkg.offerDetails}
-                  </div>
+                        {/* Details Column */}
+                        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                          <div>
+                            {/* Service Name - Primary */}
+                            <h4 className="text-[15px] font-bold text-gray-100 line-clamp-1 leading-tight group-hover:text-yellow-400 transition-colors">
+                              {service.name}
+                            </h4>
 
-                  {/* Image */}
-                  <div className="w-full h-32 rounded-lg overflow-hidden bg-gray-700 mb-4">
-                    <img
-                      src={pkg.image || "/placeholder.svg"}
-                      alt={pkg.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                            {/* Salon Name - Secondary */}
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <p className="text-xs font-medium text-gray-400 line-clamp-1">
+                                by {salon.name}
+                              </p>
+                            </div>
+                          </div>
 
-                  {/* Price and Button */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xl font-bold text-yellow-400">
-                      ₹ {pkg.price}
-                    </span>
-                    <button
-                      onClick={() => handleBuyNow(pkg)}
-                      className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 flex items-center justify-center rounded-full cursor-pointer text-sm font-bold px-6 h-9 transition-colors">
-                      Buy Now
-                    </button>
-                  </div>
+                          {/* Price and Action Row */}
+                          <div className="flex items-end justify-between mt-2">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Price</span>
+                              <span className="text-lg font-bold text-yellow-500 leading-none">
+                                ₹{service.price}
+                              </span>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              className="h-8 px-5 text-xs font-bold rounded-lg bg-[#2A2A2A] text-white border border-white/10 hover:bg-yellow-500 hover:text-black hover:border-yellow-500 transition-all duration-300 shadow-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToCart(service);
+                              }}
+                            >
+                              Add to Cart
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="text-center py-12 text-muted-foreground md:col-span-3 bg-muted/20 rounded-xl border border-dashed border-border">
+                <div className="flex flex-col items-center gap-2">
+                  <Search className="w-8 h-8 opacity-50" />
+                  <p>No services found matching your criteria.</p>
                 </div>
               </div>
-            ))}
+            )}
           </div>
-
-          {/* Hide scrollbar styles */}
-          <style type="text/css">{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
         </section>
 
-        <div className="pt-6 text-left">
-          <ServiceListing selectedGender={selectedGender} />
-        </div>
+        <section className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold">Exciting packages</h3>
+            <span className="text-xs text-muted-foreground bg-card px-3 py-1 rounded-full border border-border">
+              {packages.length} Packages
+            </span>
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            {packages.length > 0 ? (
+              packages.map((pkg) => (
+                // hideLocation={true} hides distance and address
+                <PackageCard key={pkg._id} pkg={pkg} hideLocation={true} onBook={(p) => handleAddToCart(p, "package")} />
+              ))
+            ) : (
+              <div className="w-full text-center py-8 text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border">
+                <p>No packages available at the moment.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
       </div>
     </div>
   );

@@ -55,6 +55,7 @@ export function AddBannerModal({ open, onOpenChange }: AddBannerModalProps) {
                             label="Upload Banner"
                             maxSizeMB={5}
                             className="aspect-video w-full"
+                            uploadEndpoint="/admin/upload"
                         />
                     </div>
 

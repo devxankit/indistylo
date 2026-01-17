@@ -1,6 +1,5 @@
-
+import { api } from "./apiClient";
 import type { Booking } from "./types";
-import { mockBookings } from "./mockData";
 
 export const bookingService = {
   /**
@@ -8,15 +7,23 @@ export const bookingService = {
    */
   async getBookings(): Promise<Booking[]> {
     try {
-      // In a real app, this would be:
-      // const response = await api.get<Booking[]>('/bookings');
-      // return response;
-
-      // Simulating API delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      return mockBookings;
+      const response: any = await api.get("/bookings");
+      return response;
     } catch (error) {
       console.error("Error fetching bookings:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new order (multiple bookings)
+   */
+  async createOrder(orderData: any): Promise<any> {
+    try {
+      const response = await api.post("/user/orders", orderData);
+      return response;
+    } catch (error) {
+      console.error("Error creating order:", error);
       throw error;
     }
   },
@@ -26,9 +33,7 @@ export const bookingService = {
    */
   async cancelBooking(bookingId: string): Promise<void> {
     try {
-      // await api.post(`/bookings/${bookingId}/cancel`, {});
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log(`Booking ${bookingId} cancelled`);
+      await api.patch(`/bookings/${bookingId}/cancel`);
     } catch (error) {
       console.error("Error cancelling booking:", error);
       throw error;
@@ -44,11 +49,10 @@ export const bookingService = {
     newTime: string
   ): Promise<void> {
     try {
-      // await api.post(`/bookings/${bookingId}/reschedule`, { date: newDate, time: newTime });
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log(
-        `Booking ${bookingId} rescheduled to ${newDate} at ${newTime}`
-      );
+      await api.patch(`/bookings/${bookingId}`, {
+        bookingDate: newDate,
+        bookingTime: newTime,
+      });
     } catch (error) {
       console.error("Error rescheduling booking:", error);
       throw error;
@@ -63,9 +67,7 @@ export const bookingService = {
     review: { rating: number; comment: string }
   ): Promise<void> {
     try {
-      // await api.post(`/bookings/${bookingId}/review`, review);
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log(`Review submitted for booking ${bookingId}:`, review);
+      await api.post(`/bookings/${bookingId}/review`, review);
     } catch (error) {
       console.error("Error submitting review:", error);
       throw error;

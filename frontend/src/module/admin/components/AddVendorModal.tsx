@@ -5,13 +5,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Store, User, Phone, MapPin, Mail } from "lucide-react";
 
+import { useAdminStore } from "../store/useAdminStore";
+
 interface AddVendorModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
 export function AddVendorModal({ open, onOpenChange }: AddVendorModalProps) {
-    const [isLoading, setIsLoading] = useState(false);
+    const { addVendor, isLoading } = useAdminStore();
     const [formData, setFormData] = useState({
         businessName: '',
         ownerName: '',
@@ -26,7 +28,7 @@ export function AddVendorModal({ open, onOpenChange }: AddVendorModalProps) {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Basic Validation
@@ -35,22 +37,16 @@ export function AddVendorModal({ open, onOpenChange }: AddVendorModalProps) {
             return;
         }
 
-        setIsLoading(true);
-
-        // Mock API Call
-        setTimeout(() => {
-            toast.success(`Vendor "${formData.businessName}" added successfully`);
-            setIsLoading(false);
-            onOpenChange(false);
-            setFormData({
-                businessName: '',
-                ownerName: '',
-                phone: '',
-                email: '',
-                type: 'salon',
-                location: ''
-            });
-        }, 1500);
+        await addVendor(formData);
+        onOpenChange(false);
+        setFormData({
+            businessName: '',
+            ownerName: '',
+            phone: '',
+            email: '',
+            type: 'salon',
+            location: ''
+        });
     };
 
     return (

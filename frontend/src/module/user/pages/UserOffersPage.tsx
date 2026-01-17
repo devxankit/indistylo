@@ -1,12 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Ticket, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { mockDeals } from "../services/mockData";
+import { useContentStore } from "@/module/admin/store/useContentStore";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function UserOffersPage() {
     const navigate = useNavigate();
+    const { deals, fetchContent } = useContentStore();
+
+    useEffect(() => {
+        fetchContent();
+    }, [fetchContent]);
 
     const handleCopyCode = (code: string) => {
         navigator.clipboard.writeText(code);
@@ -14,7 +20,7 @@ export function UserOffersPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background pb-24 text-foreground">
             <div className="sticky top-0 z-40 bg-background border-b border-border">
                 <div className="flex items-center px-4 py-3 gap-3">
                     <Button
@@ -37,13 +43,13 @@ export function UserOffersPage() {
                     </h2>
 
                     <div className="space-y-3">
-                        {mockDeals.map((deal) => (
+                        {deals.map((deal) => (
                             <Card
-                                key={deal.id}
-                                className="overflow-hidden bg-card border border-border group">
+                                key={deal._id || deal.id}
+                                className="overflow-hidden bg-card border border-border group text-left">
                                 <CardContent className="p-0 flex">
                                     {/* Left Side (Color Strip) */}
-                                    <div className={`w-2 ${deal.color || "bg-gray-500"} shrink-0`} />
+                                    <div className={`w-2 ${deal.color || "bg-yellow-400"} shrink-0`} />
 
                                     {/* Content */}
                                     <div className="flex-1 p-4 flex flex-col justify-between gap-3">
@@ -52,7 +58,7 @@ export function UserOffersPage() {
                                                 <h3 className="font-bold text-foreground text-sm uppercase tracking-wide">
                                                     {deal.title}
                                                 </h3>
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${deal.color || "bg-gray-500"}`}>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${deal.color || "bg-yellow-400"}`}>
                                                     {deal.discount}
                                                 </span>
                                             </div>
@@ -60,18 +66,18 @@ export function UserOffersPage() {
                                                 {deal.description}
                                             </p>
                                             <p className="text-xs text-primary/80 mt-1 font-medium">
-                                                Valid at: {deal.salon.name}
+                                                Valid at: {deal.salon?.name || "All Salons"}
                                             </p>
                                         </div>
 
                                         <div className="flex items-center justify-between border-t border-dashed border-border pt-3 mt-1">
                                             <div className="border border-yellow-400/30 bg-yellow-400/5 rounded px-2 py-1 text-xs font-mono font-bold text-yellow-400 tracking-wider">
-                                                SAVE{deal.id}0
+                                                {deal.code || `SAVE${(deal._id || deal.id).slice(-4)}`}
                                             </div>
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
-                                                onClick={() => handleCopyCode(`SAVE${deal.id}0`)}
+                                                onClick={() => handleCopyCode(deal.code || `SAVE${(deal._id || deal.id).slice(-4)}`)}
                                                 className="h-7 text-xs hover:bg-muted ml-auto gap-1.5 text-muted-foreground">
                                                 <Copy className="w-3 h-3" />
                                                 Copy Code

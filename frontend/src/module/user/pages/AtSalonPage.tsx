@@ -1,4 +1,3 @@
-import { mockSalons } from "../services/mockData";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,10 +7,18 @@ import {
   Filter,
   Map as MapIcon,
   List,
+  Loader2,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SalonMap } from "../components/SalonMap";
+import { useSalonStore } from "../store/useSalonStore";
+import { useServiceStore } from "../store/useServiceStore";
+import { useCartStore } from "../store/useCartStore";
+import { useContentStore } from "@/module/admin/store/useContentStore";
+import { useUserCategoryStore } from "../store/useUserCategoryStore";
+import { usePackageStore } from "../store/usePackageStore";
+import { PackageCard } from "../components/PackageCard";
 import {
   Carousel,
   CarouselContent,
@@ -20,67 +27,6 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
-import carousel1 from "@/assets/heropage/carousel/carousel1.png";
-import carousel2 from "@/assets/heropage/carousel/carousel2.png";
-import carousel3 from "@/assets/heropage/carousel/carousel3.png";
-import service1 from "@/assets/atsalon/service1.png";
-import service2 from "@/assets/atsalon/service2.png";
-import service3 from "@/assets/atsalon/service3.png";
-import service4 from "@/assets/atsalon/service4.png";
-import femaleservice1 from "@/assets/atsalon/femaleservice1.png";
-import femaleservice2 from "@/assets/atsalon/femaleservice2.png";
-import femaleservice3 from "@/assets/atsalon/femaleservice3.png";
-import femaleservice4 from "@/assets/atsalon/femaleservice4.png";
-import salonInterior1 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-35.png";
-import salonInterior2 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-39.png";
-import salonInterior3 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-42.png";
-import salonInterior4 from "@/assets/atsalon/saloninterior/Screenshot from 2025-11-26 16-47-44.png";
-
-const maleServices = [
-  {
-    id: 1,
-    name: "Hair Cut & Style",
-    image: service1,
-  },
-  {
-    id: 2,
-    name: "Skin Care",
-    image: service2,
-  },
-  {
-    id: 3,
-    name: "Hair Color",
-    image: service3,
-  },
-  {
-    id: 4,
-    name: "Hair Chemical",
-    image: service4,
-  },
-];
-
-const femaleServices = [
-  {
-    id: 1,
-    name: "Hair Cut & Style",
-    image: femaleservice1,
-  },
-  {
-    id: 2,
-    name: "Skin Care",
-    image: femaleservice2,
-  },
-  {
-    id: 3,
-    name: "Hair Color",
-    image: femaleservice3,
-  },
-  {
-    id: 4,
-    name: "Hair Chemical",
-    image: femaleservice4,
-  },
-];
 
 export function AtSalonPage() {
   const navigate = useNavigate();
@@ -93,41 +39,127 @@ export function AtSalonPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
 
-  const currentServices =
-    selectedGender === "male" ? maleServices : femaleServices;
+  const { salons, fetchSalons } = useSalonStore(); // Keep for map view
+  const { services, loading, fetchServices } = useServiceStore();
+  const { banners, fetchContent } = useContentStore();
+  const { categories, setGender } = useUserCategoryStore();
+  const { packages, fetchPackages } = usePackageStore();
+  const { addItem } = useCartStore(); // Import addItem
 
-  const salonImages = [
-    salonInterior1,
-    salonInterior2,
-    salonInterior3,
-    salonInterior4,
-  ];
+  const handleAddToCart = (item: any, itemType: "service" | "package" = "service") => {
+    addItem(
+      item,
+      1,
+      selectedGender.toUpperCase() as "male" | "female",
+      item.salon?._id || item.vendor?._id,
+      item.salon?.name || item.vendor?.businessName,
+      "at-salon",
+      undefined,
+      undefined,
+      itemType
+    );
+    navigate("/order-summary");
+  };
 
-  // Filter salons based on search query, category, and gender
-  const filteredSalons = mockSalons.filter((salon) => {
-    // If search query is empty, match all salons
+  useEffect(() => {
+    fetchSalons();
+    fetchServices({ type: "at-salon" });
+    fetchContent();
+    fetchPackages({ type: "at-salon", gender: selectedGender });
+    setGender(selectedGender.toUpperCase() as "MALE" | "FEMALE");
+
+    // Get user location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    }
+  }, [fetchSalons, fetchServices, fetchContent, selectedGender, setGender]);
+
+  // Flatten subcategories from all header groups (for service cards)
+  const currentServices = categories
+    .filter(
+      (group) =>
+        selectedCategory === "All" || group.headerName === selectedCategory
+    )
+    .flatMap((group) =>
+      group.subcategories.map((sub) => ({
+        id: sub._id,
+        name: sub.name,
+        image: sub.image,
+      }))
+    );
+
+  // Header categories for filter tabs
+  const headerCategories = categories
+    .map((group) => group.headerName)
+    .sort((a, b) => {
+      const orderA =
+        categories.find((g) => g.headerName === a)?.headerOrder || 0;
+      const orderB =
+        categories.find((g) => g.headerName === b)?.headerOrder || 0;
+      return orderA - orderB;
+    });
+
+  const calculateDistance = (salonGeo: { coordinates: number[] } | undefined) => {
+    if (!userLocation || !salonGeo || !salonGeo.coordinates) return null;
+
+    const [salonLng, salonLat] = salonGeo.coordinates;
+    const R = 6371; // km
+    const dLat = (salonLat - userLocation.lat) * Math.PI / 180;
+    const dLon = (salonLng - userLocation.lng) * Math.PI / 180;
+    const lat1 = userLocation.lat * Math.PI / 180;
+    const lat2 = salonLat * Math.PI / 180;
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return (R * c).toFixed(1);
+  };
+
+  // Filter services based on search query, category, and gender
+  const filteredServices = services.filter((service) => {
+    // Ensure salon is populated
+    if (typeof service.salon === 'string') return false;
+    const salon = service.salon;
+
     const matchesSearch =
       searchQuery.trim() === "" ||
+      service.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
       salon.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-      salon.location.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-      (salon.category &&
-        salon.category.some((cat) =>
-          cat.toLowerCase().includes(searchQuery.toLowerCase().trim())
-        ));
+      salon.location.toLowerCase().includes(searchQuery.toLowerCase().trim());
 
     const matchesCategory =
       selectedCategory === "All" ||
-      (salon.category && salon.category.includes(selectedCategory));
+      service.category === selectedCategory || // Direct match
+      // Or check if it belongs to a header category (fetched via useUserCategoryStore)
+      categories.some(g => g.headerName === selectedCategory && g.subcategories.some(s => s.name === service.name)); // Rough check, ideal is backend category field match
 
-    // Filter by gender: show salons that match the selected gender or are 'both'
+    // Filter by gender: show services that match the selected gender or are 'unisex'
     const matchesGender =
-      !salon.gender ||
-      salon.gender === "both" ||
-      salon.gender === selectedGender;
+      service.gender === "unisex" ||
+      service.gender === selectedGender;
 
-    return matchesSearch && matchesCategory && matchesGender;
+    return matchesSearch && matchesGender && (selectedCategory === "All" ? true : matchesCategory);
   });
+
+  if (loading && services.length === 0) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -138,8 +170,8 @@ export function AtSalonPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search for the style you want..."
-              aria-label="Search salons"
+              placeholder="Search for service or salon..."
+              aria-label="Search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -169,17 +201,16 @@ export function AtSalonPage() {
 
         {/* Category Filters - Mobile View */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:hidden">
-          {["All", "Hair", "Skin", "Nails", "Spa"].map((category) => (
+          {["All", ...headerCategories].map((category) => (
             <Button
               key={category}
               onClick={() => setSelectedCategory(category)}
               variant="outline"
               size="sm"
-              className={`whitespace-nowrap ${
-                selectedCategory === category
-                  ? "!bg-yellow-400 !text-gray-900 !border-yellow-400 hover:!bg-yellow-400 hover:!text-gray-900"
-                  : "text-foreground hover:text-yellow-400 hover:border-yellow-400"
-              }`}>
+              className={`whitespace-nowrap ${selectedCategory === category
+                ? "!bg-yellow-400 !text-gray-900 !border-yellow-400 hover:!bg-yellow-400 hover:!text-gray-900"
+                : "text-foreground hover:text-yellow-400 hover:border-yellow-400"
+                }`}>
               {category}
             </Button>
           ))}
@@ -191,7 +222,7 @@ export function AtSalonPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search for the style you want..."
+              placeholder="Search for service or salon..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -199,17 +230,16 @@ export function AtSalonPage() {
           </div>
           <div className="flex items-center gap-2 md:gap-4">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-              {["All", "Hair", "Skin", "Nails", "Spa"].map((category) => (
+              {["All", ...headerCategories].map((category) => (
                 <Button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
                   variant="outline"
                   size="sm"
-                  className={`whitespace-nowrap ${
-                    selectedCategory === category
-                      ? "border-yellow-400 text-yellow-400 bg-yellow-400/10 hover:text-yellow-400"
-                      : "text-foreground hover:text-yellow-400 hover:border-yellow-400"
-                  }`}>
+                  className={`whitespace-nowrap ${selectedCategory === category
+                    ? "border-yellow-400 text-yellow-400 bg-yellow-400/10 hover:text-yellow-400"
+                    : "text-foreground hover:text-yellow-400 hover:border-yellow-400"
+                    }`}>
                   {category}
                 </Button>
               ))}
@@ -244,10 +274,10 @@ export function AtSalonPage() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold">Salons Near You</h3>
               <span className="text-xs text-muted-foreground bg-card px-3 py-1 rounded-full border border-border">
-                {filteredSalons.length} Salons found
+                {salons.length} Salons found
               </span>
             </div>
-            <SalonMap salons={filteredSalons} />
+            <SalonMap salons={salons} />
           </section>
         ) : (
           <>
@@ -260,33 +290,19 @@ export function AtSalonPage() {
               }}
               plugins={[autoplayPlugin.current]}>
               <CarouselContent>
-                <CarouselItem>
-                  <div className="rounded-2xl overflow-hidden">
-                    <img
-                      src={carousel1}
-                      alt="Carousel 1"
-                      className="w-full h-auto object-cover"
-                    />
-                  </div>
-                </CarouselItem>
-                <CarouselItem>
-                  <div className="rounded-2xl overflow-hidden">
-                    <img
-                      src={carousel2}
-                      alt="Carousel 2"
-                      className="w-full h-auto object-cover"
-                    />
-                  </div>
-                </CarouselItem>
-                <CarouselItem>
-                  <div className="rounded-2xl overflow-hidden">
-                    <img
-                      src={carousel3}
-                      alt="Carousel 3"
-                      className="w-full h-auto object-cover"
-                    />
-                  </div>
-                </CarouselItem>
+                {banners
+                  .filter((b) => b.active)
+                  .map((banner) => (
+                    <CarouselItem key={banner._id || banner.id}>
+                      <div className="rounded-2xl overflow-hidden">
+                        <img
+                          src={banner.image}
+                          alt="Promo Banner"
+                          className="w-full h-auto object-cover"
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
               </CarouselContent>
               <CarouselPrevious className="left-2 md:-left-12" />
               <CarouselNext className="right-2 md:-right-12" />
@@ -302,41 +318,37 @@ export function AtSalonPage() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setSelectedGender("male")}
-                    className={`px-2 py-1 text-sm font-medium transition-colors ${
-                      selectedGender === "male"
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    }`}>
+                    className={`px-2 py-1 text-sm font-medium transition-colors ${selectedGender === "male"
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                      }`}>
                     Male
                   </button>
                   <div
-                    className={`relative w-11 h-6 rounded-full transition-all duration-300 cursor-pointer ${
-                      selectedGender === "male" ? "bg-primary" : "bg-primary"
-                    }`}
+                    className={`relative w-11 h-6 rounded-full transition-all duration-300 cursor-pointer ${selectedGender === "male" ? "bg-primary" : "bg-primary"
+                      }`}
                     onClick={() =>
                       setSelectedGender(
                         selectedGender === "male" ? "female" : "male"
                       )
                     }>
                     <div
-                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
-                        selectedGender === "male" ? "left-0.5" : "left-[22px]"
-                      }`}
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${selectedGender === "male" ? "left-0.5" : "left-[22px]"
+                        }`}
                     />
                   </div>
                   <button
                     onClick={() => setSelectedGender("female")}
-                    className={`px-3 py-1 text-sm font-medium transition-colors ${
-                      selectedGender === "female"
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    }`}>
+                    className={`px-3 py-1 text-sm font-medium transition-colors ${selectedGender === "female"
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                      }`}>
                     Female
                   </button>
                 </div>
               </div>
 
-              {/* Service Cards Grid */}
+              {/* Service Cards Grid - Sub Categories */}
               <div className="grid grid-cols-4 gap-2">
                 {currentServices.map((service, index) => (
                   <Card
@@ -362,60 +374,139 @@ export function AtSalonPage() {
               </div>
             </section>
 
-            {/* Salons List */}
+            {/* Available Services List */}
             <section>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">Featured Services</h3>
+                <span className="text-xs text-muted-foreground bg-card px-3 py-1 rounded-full border border-border">
+                  {filteredServices.length} Services
+                </span>
+              </div>
+
               <div className="space-y-4 md:grid md:grid-cols-3 md:gap-4 md:space-y-0">
-                {filteredSalons.length > 0 ? (
-                  filteredSalons.map((salon, index) => (
-                    <Card
-                      key={salon.id}
-                      className="cursor-pointer hover:bg-muted transition-colors py-2">
-                      <CardContent className="p-4">
-                        <div className="flex gap-4 mb-2">
-                          <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            <img
-                              src={salonImages[index % salonImages.length]}
-                              alt={salon.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-base text-start mb-1">
-                              {salon.name}
-                            </CardTitle>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                              <MapPin className="w-3 h-3" />
-                              <span className="truncate">{salon.location}</span>
+                {filteredServices.length > 0 ? (
+                  filteredServices.map((service, index) => {
+                    // Type assertion since we filter out strings earlier
+                    if (typeof service.salon === 'string') return null;
+                    const salon = service.salon;
+                    const displayImage = salon.images && salon.images.length > 0
+                      ? salon.images[0]
+                      : "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=800";
+
+                    const distance = calculateDistance(salon.geo);
+
+                    return (
+                      <Card
+                        key={service._id}
+                        onClick={() => navigate(`/shops/${salon._id}`)}
+                        className="cursor-pointer bg-[#1A1A1A] border-none text-white hover:bg-[#252525] transition-colors py-3 px-1 animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-2xl"
+                        style={{ animationDelay: `${index * 50}ms` }}>
+                        <CardContent className="p-3">
+                          <div className="flex gap-3 mb-3">
+                            {/* Salon Image */}
+                            <div className="w-20 h-20 bg-muted rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
+                              <img
+                                src={displayImage}
+                                alt={salon.name}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
-                            <div className="flex items-center gap-4 text-sm">
-                              <div className="flex items-center gap-1">
-                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                <span>{salon.rating}</span>
+
+                            {/* Details */}
+                            <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                              <div>
+                                <CardTitle className="text-[15px] text-start font-semibold text-white line-clamp-1 leading-tight">
+                                  {salon.name}
+                                </CardTitle>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1.5">
+                                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                                  <span className="truncate">
+                                    {salon.location}
+                                  </span>
+                                </div>
                               </div>
-                              <span className="text-muted-foreground">
-                                {salon.distance} km away
-                              </span>
+
+                              <div className="flex items-center gap-3 text-xs font-medium mt-1">
+                                <div className="flex items-center gap-1 text-white">
+                                  <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+                                  <span className="mt-0.5">{salon.rating || "5"}</span>
+                                </div>
+                                {distance && (
+                                  <span className="text-gray-400 font-normal mt-0.5">
+                                    {distance} km away
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="pt-2 text-sm text-primary text-left">
-                          <div className="h-[1px] bg-gradient-to-r from-transparent via-primary to-transparent mb-4"></div>
-                          <div className="flex items-center justify-between">
-                            <span>Service starting from ₹{salon.price}</span>
+
+                          {/* Golden Divider */}
+                          <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-80 mb-3"></div>
+
+                          {/* Footer: Service Name & Price & Book */}
+                          <div className="flex items-center justify-between px-1">
+                            <p className="text-[13px] font-medium text-yellow-500">
+                              {service.name} @ ₹{service.price}
+                            </p>
                             <Button
-                              variant="outline"
                               size="sm"
-                              onClick={() => navigate(`/shops/${salon.id}`)}>
-                              Book
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddToCart(service);
+                              }}
+                              className="px-6 h-8 text-xs rounded-lg font-medium bg-black text-white border border-gray-800 hover:bg-gray-900 hover:text-yellow-500 transition-colors"
+                            >
+                              Add to Cart
                             </Button>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground md:col-span-3">
-                    No salons found matching your criteria.
+                  <div className="text-center py-12 text-muted-foreground md:col-span-3 bg-muted/20 rounded-xl border border-dashed border-border">
+                    <div className="flex flex-col items-center gap-2">
+                      <Search className="w-8 h-8 opacity-50" />
+                      <p>No services found matching your criteria.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Exciting Packages Section */}
+            <section className="mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">Exciting packages</h3>
+                <span className="text-xs text-muted-foreground bg-card px-3 py-1 rounded-full border border-border">
+                  {packages.length} Packages
+                </span>
+              </div>
+
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                {packages.length > 0 ? (
+                  packages.map((pkg) => {
+                    // Calculate distance if vendor has location
+                    // Package model has vendor populated with address/city, but AtSalonPage needs coordinates for calculation.
+                    // The 'getPackages' controller populates vendor with "businessName address city".
+                    // It likely DOES NOT populate 'geo' or 'location' (coordinates).
+                    // I need to check the controller and update it if needed.
+                    // Wait, PackageCard needs distance. AtSalonPage has calculateDistance function.
+                    // But I need the vendor's coordinates.
+
+                    // Let's assume for now I will fix the backend to return geo.
+                    // Or I can look up the salon corresponding to the vendor?
+                    // The 'salons' store has all salons with geo.
+                    // I can find the salon that belongs to this vendor.
+
+                    const salon = salons.find(s => s.vendor === pkg.vendor._id || s.vendor === (pkg.vendor as any)._id);
+                    const distance = salon ? calculateDistance(salon.geo) : null;
+
+                    return <PackageCard key={pkg._id} pkg={pkg} distance={distance} onBook={(p) => handleAddToCart(p, "package")} />;
+                  })
+                ) : (
+                  <div className="w-full text-center py-8 text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border">
+                    <p>No packages available at the moment.</p>
                   </div>
                 )}
               </div>

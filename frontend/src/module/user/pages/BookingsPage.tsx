@@ -12,8 +12,7 @@ import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 import { useNavigate } from "react-router-dom";
 import { Search, CalendarDays } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { bookingService } from "../services/bookingService";
-import type { Booking } from "../services/types";
+import { useBookingStore } from "../store/useBookingStore";
 
 type SortOption = "creation" | "booking";
 
@@ -23,37 +22,35 @@ export function BookingsPage() {
   const [selectedSort, setSelectedSort] = useState<SortOption>("creation");
   const [pendingSort, setPendingSort] = useState<SortOption>("creation");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [selectedBookingForReview, setSelectedBookingForReview] =
-    useState<Booking | null>(null);
+
+  const {
+    bookings,
+    loading: isLoading,
+    fetchBookings,
+    cancelBooking,
+    submitReview,
+    rescheduleBooking,
+  } = useBookingStore();
+
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<
+    any | null
+  >(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
-  const [selectedBookingForDetail, setSelectedBookingForDetail] =
-    useState<Booking | null>(null);
+  const [selectedBookingForDetail, setSelectedBookingForDetail] = useState<
+    any | null
+  >(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedBookingForReschedule, setSelectedBookingForReschedule] =
-    useState<Booking | null>(null);
+    useState<any | null>(null);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
 
   const navigate = useNavigate();
 
   // Fetch bookings
   useEffect(() => {
-    const fetchBookings = async () => {
-      setIsLoading(true);
-      try {
-        const data = await bookingService.getBookings();
-        setBookings(data);
-      } catch (error) {
-        toast.error("Failed to load bookings. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchBookings();
-  }, []);
+  }, [fetchBookings]);
 
   const handleReviewSubmit = async (review: {
     rating: number;
@@ -62,7 +59,7 @@ export function BookingsPage() {
     if (!selectedBookingForReview) return;
 
     try {
-      await bookingService.submitReview(selectedBookingForReview.id, review);
+      await submitReview(selectedBookingForReview._id, review);
       toast.success(
         "Review submitted successfully! Thank you for your feedback."
       );
@@ -82,12 +79,7 @@ export function BookingsPage() {
     if (!bookingToDelete) return;
 
     try {
-      await bookingService.cancelBooking(bookingToDelete);
-      setBookings((prev) =>
-        prev.map((b) =>
-          b.id === bookingToDelete ? { ...b, status: "cancelled" } : b
-        )
-      );
+      await cancelBooking(bookingToDelete);
       toast.success("Booking cancelled successfully");
       setShowDetailDialog(false);
     } catch (error) {
@@ -103,11 +95,8 @@ export function BookingsPage() {
     time: string
   ) => {
     try {
-      await bookingService.rescheduleBooking(bookingId, date, time);
-      setBookings((prev) =>
-        prev.map((b) => (b.id === bookingId ? { ...b, date, time } : b))
-      );
-      toast.success(`Booking rescheduled to ${date} at ${time}`);
+      await rescheduleBooking(bookingId, date, time);
+      toast.success("Booking rescheduled successfully");
       setShowRescheduleDialog(false);
       setShowDetailDialog(false);
     } catch (error) {
@@ -115,7 +104,7 @@ export function BookingsPage() {
     }
   };
 
-  const handleViewDetails = (booking: Booking) => {
+  const handleViewDetails = (booking: any) => {
     setSelectedBookingForDetail(booking);
     setShowDetailDialog(true);
   };
@@ -143,16 +132,16 @@ export function BookingsPage() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (b) =>
-          b.salonName.toLowerCase().includes(query) ||
-          b.service.toLowerCase().includes(query)
+          (b.salon?.name || "").toLowerCase().includes(query) ||
+          (b.service?.name || "").toLowerCase().includes(query)
       );
     }
 
     return filtered;
   };
 
-  const sortBookings = (bookingsList: Booking[], sortBy: SortOption) => {
-    const toDate = (booking: Booking) => {
+  const sortBookings = (bookingsList: any[], sortBy: SortOption) => {
+    const toDate = (booking: any) => {
       try {
         const date = new Date(booking.date);
         if (isNaN(date.getTime())) return new Date();
@@ -167,7 +156,10 @@ export function BookingsPage() {
       const dateB = toDate(b).getTime();
 
       if (sortBy === "creation") {
-        return dateB - dateA;
+        // Use createdAt for creation sort if available
+        const createA = new Date(a.createdAt || a.date).getTime();
+        const createB = new Date(b.createdAt || b.date).getTime();
+        return createB - createA;
       }
 
       return activeTab === "Upcoming" ? dateA - dateB : dateB - dateA;
@@ -238,17 +230,17 @@ export function BookingsPage() {
           <div className="space-y-4 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 md:space-y-0 pb-10">
             {currentBookings.map((booking) => (
               <BookingCard
-                key={booking.id}
+                key={booking._id}
                 booking={booking}
                 onViewDetails={() => handleViewDetails(booking)}
                 onReschedule={() => {
                   setSelectedBookingForReschedule(booking);
                   setShowRescheduleDialog(true);
                 }}
-                onCancel={() => initiateCancel(booking.id)}
+                onCancel={() => initiateCancel(booking._id)}
                 onBookAgain={() => {
                   toast.success("Redirecting to shop...");
-                  navigate(`/shops/${booking.id}`); // Using booking ID as mock salon ID
+                  navigate(`/shops/${booking.salon?._id || ""}`);
                 }}
                 onReview={() => {
                   setSelectedBookingForReview(booking);
@@ -343,17 +335,19 @@ export function BookingsPage() {
                     onClick={() => setPendingSort(option.id)}
                     className="flex items-center gap-3 w-full text-left">
                     <span
-                      className={`w-5 h-5 rounded-md border flex items-center justify-center ${isSelected
-                        ? "bg-yellow-400 border-yellow-400"
-                        : "border-[#3a3a3a] bg-transparent"
-                        }`}>
+                      className={`w-5 h-5 rounded-md border flex items-center justify-center ${
+                        isSelected
+                          ? "bg-yellow-400 border-yellow-400"
+                          : "border-[#3a3a3a] bg-transparent"
+                      }`}>
                       {isSelected && (
                         <span className="w-2 h-2 rounded-sm bg-black" />
                       )}
                     </span>
                     <span
-                      className={`text-sm ${isSelected ? "text-[#f5f5f5]" : "text-[#f5f5f5]/70"
-                        }`}>
+                      className={`text-sm ${
+                        isSelected ? "text-[#f5f5f5]" : "text-[#f5f5f5]/70"
+                      }`}>
                       {option.label}
                     </span>
                   </button>

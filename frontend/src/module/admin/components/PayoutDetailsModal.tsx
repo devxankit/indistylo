@@ -7,7 +7,7 @@ import { Loader2, Landmark, Info } from "lucide-react";
 
 interface PayoutRequest {
     id: string;
-    vendor: string;
+    vendor: any; // Updated to accept object or string
     amount: number;
     requested: string;
     status: string;
@@ -31,18 +31,28 @@ export function PayoutDetailsModal({ payout, open, onOpenChange, onProcess }: Pa
 
     if (!payout) return null;
 
+    // Helper to get vendor name safely
+    const getVendorName = (vendor: any) => {
+        if (typeof vendor === 'object' && vendor !== null) {
+            return vendor.name || vendor.businessName || "Unknown Vendor";
+        }
+        return vendor || "Unknown Vendor";
+    };
+
     // Mock bank details if missing
     const bankDetails = payout.bankDetails || {
         accountNumber: "XXXX XXXX 1234",
         ifsc: "HDFC0001234",
         bankName: "HDFC Bank",
-        holderName: payout.vendor
+        holderName: getVendorName(payout.vendor)
     };
 
     const handleAction = (status: 'processed' | 'rejected') => {
         setIsLoading(true);
         setTimeout(() => {
-            onProcess(payout.id, status);
+            // Use _id if available, fallback to id
+            const payoutId = (payout as any)._id || payout.id;
+            onProcess(payoutId, status);
             toast.success(status === 'processed' ? "Payout processed successfully" : "Payout rejected");
             setIsLoading(false);
             onOpenChange(false);
@@ -74,7 +84,7 @@ export function PayoutDetailsModal({ payout, open, onOpenChange, onProcess }: Pa
                         </div>
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Vendor</span>
-                            <span className="font-medium">{payout.vendor}</span>
+                            <span className="font-medium">{getVendorName(payout.vendor)}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Date</span>

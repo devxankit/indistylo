@@ -1,5 +1,6 @@
 export type Salon = {
-  id: string;
+  _id: string;
+  id?: string;
   name: string;
   location: string;
   distance: number;
@@ -12,10 +13,16 @@ export type Salon = {
     lat: number;
     lng: number;
   };
+  vendor?: string | any;
+  geo?: {
+    type: string;
+    coordinates: number[];
+  };
 };
 
 export type Deal = {
-  id: string;
+  _id: string;
+  id?: string;
   title: string;
   description: string;
   salon: Salon;
@@ -24,16 +31,34 @@ export type Deal = {
   dayInfo?: string;
 };
 
+export interface Order {
+  _id: string;
+  user: string;
+  salon: any;
+  bookings: Booking[];
+  totalAmount: number;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  paymentStatus: "pending" | "paid" | "failed";
+  paymentMethod: "online" | "cash" | "wallet";
+  createdAt: string;
+}
+
 export interface Booking {
-  id: string;
-  salonName: string;
-  service: string;
+  _id: string;
+  id?: string;
+  salon: Salon | { name: string; _id: string; location?: string; images?: string[]; geo?: { type: string; coordinates: number[] } };
+  service: { name: string; _id: string; price: number };
   date: string;
   time: string;
   status: "upcoming" | "completed" | "cancelled" | "missed";
   type: "at-salon" | "at-home";
-  price?: number;
-  professionalName?: string;
+  price: number;
+  professional?: string | { name: string; _id: string };
+  address?: string;
+  geo?: {
+    type: string;
+    coordinates: number[];
+  };
 }
 
 export interface Product {
@@ -54,16 +79,20 @@ export interface Professional {
 }
 
 export interface AtHomeService {
+  _id?: string;
   id: string;
   name: string;
   image: string;
   duration: number; // in minutes
   price: number;
+  salon?: Salon | any;
 }
 
 export interface AtHomeServicePackage {
+  _id?: string;
   id: string;
   title: string;
+  name?: string; // Add name support
   description: string;
   image: string;
   price: number;
@@ -73,4 +102,7 @@ export interface AtHomeServicePackage {
   overview?: string[];
   howItWorks?: string[];
   offerDetails?: string;
+  salon?: Salon | any;
+  salonId?: string;
+  salonName?: string;
 }

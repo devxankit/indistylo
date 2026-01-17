@@ -14,7 +14,7 @@ export interface UserProfile {
 export const userService = {
   getProfile: () => api.get<UserProfile>('/user/profile'),
   updateProfile: (data: Partial<UserProfile>) => api.put<UserProfile>('/user/profile', data),
-  
+
   // Address operations
   getAddresses: () => api.get<Address[]>('/user/addresses'),
   addAddress: (address: Omit<Address, 'id'>) => api.post<Address>('/user/addresses', address),

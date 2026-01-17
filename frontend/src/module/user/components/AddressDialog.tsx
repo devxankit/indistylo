@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus, Trash2, Edit2, Check } from "lucide-react";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useAddressStore, type Address } from "../store/useAddressStore";
 import { toast } from "sonner";
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
+import { LocationPicker } from "@/module/vendor/vendor-components/LocationPicker";
 
 interface AddressDialogProps {
   open: boolean;
@@ -27,13 +28,21 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
     deleteAddress,
     setSelectedAddress,
     setDefaultAddress,
+    fetchAddresses,
   } = useAddressStore();
+
+  useEffect(() => {
+    if (open) {
+      fetchAddresses();
+    }
+  }, [open, fetchAddresses]);
 
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Address>>({
     name: "",
     phone: "",
+    label: "Home", // Default label
     addressLine1: "",
     addressLine2: "",
     city: "",
@@ -47,6 +56,7 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
     setFormData({
       name: "",
       phone: "",
+      label: "Home",
       addressLine1: "",
       addressLine2: "",
       city: "",
@@ -63,6 +73,7 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
     if (
       !formData.name ||
       !formData.phone ||
+      !formData.label ||
       !formData.addressLine1 ||
       !formData.city ||
       !formData.state ||
@@ -79,7 +90,7 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
       }
       toast.success("Address updated successfully");
     } else {
-      addAddress(formData as Omit<Address, "id">);
+      addAddress(formData as Omit<Address, "_id">);
       toast.success("Address added successfully");
     }
 
@@ -88,7 +99,7 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
 
   const handleEdit = (address: Address) => {
     setFormData(address);
-    setEditingId(address.id);
+    setEditingId(address._id);
     setIsAddingNew(true);
   };
 
@@ -216,6 +227,26 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
                   />
                 </div>
 
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-2">
+                    Address Type *
+                  </label>
+                  <div className="flex gap-3">
+                    {["Home", "Work", "Other"].map((label) => (
+                      <button
+                        key={label}
+                        onClick={() => setFormData({ ...formData, label })}
+                        className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${formData.label === label
+                          ? "bg-yellow-400 text-gray-900 border-yellow-400"
+                          : "bg-transparent text-muted-foreground border-border hover:border-yellow-400 hover:text-foreground"
+                          }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium text-foreground block mb-1">
@@ -280,6 +311,32 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
                   </div>
                 </div>
 
+                {/* Location Picker */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground block">
+                    Pin Location on Map *
+                  </label>
+                  <LocationPicker
+                    initialLocation={
+                      formData.geo?.coordinates
+                        ? { lat: formData.geo.coordinates[1], lng: formData.geo.coordinates[0] }
+                        : undefined
+                    }
+                    onLocationSelect={(loc) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        geo: {
+                          type: "Point",
+                          coordinates: [loc.lng, loc.lat]
+                        }
+                      }));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Drag the map to pin your exact location for better service delivery.
+                  </p>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -323,8 +380,8 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
               </h3>
               {addresses.map((address) => (
                 <div
-                  key={address.id}
-                  className={`bg-card border rounded-lg p-4 space-y-2 text-left ${selectedAddressId === address.id
+                  key={address._id}
+                  className={`bg-card border rounded-lg p-4 space-y-2 text-left ${selectedAddressId === address._id
                     ? "border-yellow-400 bg-yellow-400/5"
                     : "border-border"
                     }`}>
@@ -334,12 +391,15 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
                         <h4 className="font-semibold text-foreground">
                           {address.name}
                         </h4>
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
+                          {address.label || "Home"}
+                        </span>
                         {address.isDefault && (
-                          <span className="text-xs bg-yellow-400 text-gray-900 px-2 py-0.5 rounded">
+                          <span className="text-xs bg-yellow-400/20 text-yellow-400 border border-yellow-400/20 px-2 py-0.5 rounded">
                             Default
                           </span>
                         )}
-                        {selectedAddressId === address.id && (
+                        {selectedAddressId === address._id && (
                           <Check className="w-4 h-4 text-yellow-400" />
                         )}
                       </div>
@@ -367,7 +427,7 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
                         <Edit2 className="w-4 h-4 text-muted-foreground" />
                       </button>
                       <button
-                        onClick={() => handleDelete(address.id)}
+                        onClick={() => handleDelete(address._id)}
                         className="p-2 hover:bg-muted rounded transition-colors"
                         title="Delete">
                         <Trash2 className="w-4 h-4 text-destructive" />
@@ -375,9 +435,9 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
                     </div>
                   </div>
 
-                  {selectedAddressId !== address.id && (
+                  {selectedAddressId !== address._id && (
                     <Button
-                      onClick={() => handleSelectAddress(address.id)}
+                      onClick={() => handleSelectAddress(address._id)}
                       variant="outline"
                       size="sm"
                       className="w-full border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:text-yellow-400 justify-start">
@@ -385,9 +445,9 @@ export function AddressDialog({ open, onOpenChange }: AddressDialogProps) {
                     </Button>
                   )}
 
-                  {!address.isDefault && selectedAddressId === address.id && (
+                  {!address.isDefault && selectedAddressId === address._id && (
                     <Button
-                      onClick={() => setDefaultAddress(address.id)}
+                      onClick={() => setDefaultAddress(address._id)}
                       variant="outline"
                       size="sm"
                       className="w-full justify-start">

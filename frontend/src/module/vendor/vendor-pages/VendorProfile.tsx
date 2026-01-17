@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Mail,
@@ -16,34 +17,20 @@ import {
   MessageSquare,
   Clock,
   Grid3x3,
+  Loader2,
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
 import { useVendorStore } from "../store/useVendorStore";
 import { ImageUpload } from "../vendor-components/ImageUpload";
+import { LocationPicker } from "../vendor-components/LocationPicker";
+import { useVendorAnalyticsStore } from "../store/useVendorAnalyticsStore";
+import { format } from "date-fns";
+import { toast } from "sonner";
 
-// Mock vendor data - mostly replaced by store now
-const quickStats = [
-  {
-    label: "Total Bookings",
-    value: "1,250",
-    icon: Calendar,
-    color: "text-blue-400",
-  },
-  {
-    label: "Average Rating",
-    value: "4.8",
-    icon: Star,
-    color: "text-yellow-400",
-  },
-  {
-    label: "Growth",
-    value: "+18%",
-    icon: TrendingUp,
-    color: "text-green-400",
-  },
-];
+
 
 const menuItems = [
   {
@@ -52,6 +39,13 @@ const menuItems = [
     description: "Manage your services",
     icon: Grid3x3,
     path: "/vendor/services",
+  },
+  {
+    id: "packages",
+    label: "My Packages",
+    description: "Create and manage packages",
+    icon: Package,
+    path: "/vendor/packages",
   },
   {
     id: "customers",
@@ -66,6 +60,13 @@ const menuItems = [
     description: "View and respond to reviews",
     icon: MessageSquare,
     path: "/vendor/reviews",
+  },
+  {
+    id: "professionals",
+    label: "Manage Professionals",
+    description: "Manage your salon staff",
+    icon: Users,
+    path: "/vendor/professionals",
   },
   {
     id: "schedule",
@@ -114,13 +115,84 @@ export function VendorProfile() {
     address,
     profileImage,
     galleryImages,
-    setProfile
+    loading,
+    rating,
+    joinedAt,
+    geo,
+    fetchProfile,
+    updateProfile,
   } = useVendorStore();
+
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [newLocation, setNewLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  const handleLocationSave = async () => {
+    if (newLocation) {
+      try {
+        await updateProfile({
+          geo: { type: 'Point', coordinates: [newLocation.lng, newLocation.lat] }
+        });
+        setIsEditingLocation(false);
+        toast.success("Location updated successfully");
+      } catch (error) {
+        toast.error("Failed to update location");
+      }
+    }
+  };
+
+  const { summary, fetchAnalytics } = useVendorAnalyticsStore();
+
+  useEffect(() => {
+    fetchProfile();
+    fetchAnalytics();
+  }, [fetchProfile, fetchAnalytics]);
+
+  const stats = [
+    {
+      label: "Total Bookings",
+      value: summary?.bookings.current.toString() || "0",
+      icon: Calendar,
+      color: "text-blue-400",
+    },
+    {
+      label: "Average Rating",
+      value: rating ? rating.toFixed(1) : "0.0", // Use rating from vendor store or performance
+      icon: Star,
+      color: "text-yellow-400",
+    },
+    {
+      label: "Growth",
+      value: summary ? `${summary.revenue.change >= 0 ? "+" : ""}${summary.revenue.change.toFixed(0)}%` : "0%",
+      icon: TrendingUp,
+      color: "text-green-400",
+    },
+  ];
 
   const handleLogout = () => {
     // Handle logout logic
     navigate("/vendor/auth");
   };
+
+  const handleImageUpdate = async (type: "profile" | "gallery", val: string | string[]) => {
+    try {
+      if (type === "profile") {
+        await updateProfile({ profileImage: val as string });
+      } else {
+        await updateProfile({ galleryImages: val as string[] });
+      }
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    }
+  };
+
+  if (loading && !businessName) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
@@ -135,9 +207,10 @@ export function VendorProfile() {
             <div className="w-32 mx-auto">
               <ImageUpload
                 value={profileImage || ""}
-                onChange={(val) => setProfile({ profileImage: val as string })}
+                onChange={(val) => handleImageUpdate("profile", val)}
                 label="Profile Photo"
                 maxSizeMB={5}
+                disabled={loading}
               />
             </div>
 
@@ -149,9 +222,12 @@ export function VendorProfile() {
               <p className="text-sm font-medium text-foreground/80 mt-1">
                 {ownerName || "Owner Name"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Joined Pending...
-              </p>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                {loading && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
+                <p className="text-xs text-muted-foreground">
+                  Joined {joinedAt ? format(new Date(joinedAt), "MMMM yyyy") : "..."}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -161,7 +237,7 @@ export function VendorProfile() {
             initial="hidden"
             animate="visible"
             className="grid grid-cols-3 gap-3">
-            {quickStats.map((stat) => {
+            {stats.map((stat) => {
               const Icon = stat.icon;
               return (
                 <motion.div
@@ -202,10 +278,11 @@ export function VendorProfile() {
             </h2>
             <ImageUpload
               value={galleryImages || []}
-              onChange={(val) => setProfile({ galleryImages: val as string[] })}
+              onChange={(val) => handleImageUpdate("gallery", val)}
               multiple
               maxFiles={10}
               label="Add Salon Photos"
+              disabled={loading}
             />
           </motion.section>
 
@@ -266,6 +343,48 @@ export function VendorProfile() {
                   </p>
                 </div>
               </div>
+            </motion.div>
+
+            {/* Shop Location */}
+            <motion.div
+              variants={staggerItem}
+              className="bg-card border border-border rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">Shop Location</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {geo ? "Location Set" : "Location Not Set"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsEditingLocation(!isEditingLocation)}
+                  className="text-xs font-semibold text-primary hover:underline">
+                  {isEditingLocation ? "Cancel" : "Update"}
+                </button>
+              </div>
+
+              {isEditingLocation && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="space-y-3 pt-2">
+                  <LocationPicker
+                    initialLocation={geo ? { lat: geo.coordinates[1], lng: geo.coordinates[0] } : undefined}
+                    onLocationSelect={setNewLocation}
+                  />
+                  <button
+                    onClick={handleLocationSave}
+                    disabled={!newLocation || loading}
+                    className="w-full h-10 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Save New Location"}
+                  </button>
+                </motion.div>
+              )}
             </motion.div>
           </motion.div>
         </motion.section>

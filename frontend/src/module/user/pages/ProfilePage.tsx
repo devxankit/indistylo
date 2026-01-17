@@ -18,6 +18,7 @@ import {
 } from "../store/useProfileStore";
 import { useUserStore } from "../store/useUserStore";
 import { useRef, useEffect, useState } from "react";
+import { api } from "../services/apiClient";
 
 import { ConfirmationDialog } from "@/components/common/ConfirmationDialog";
 import { AddressDialog } from "../components/AddressDialog";
@@ -26,32 +27,32 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const {
-    membershipId,
-    avatarUrl,
-    servicePreference,
-    setAvatarUrl,
-    setServicePreference,
+    profile,
+    fetchProfile,
+    updateProfile,
+    updateAvatar,
+    updateServicePreference,
   } = useProfileStore();
-  const {
-    name,
-    setName,
-    notificationsCount,
-    points,
-    isLoggedIn,
-    userPhone,
-    logout,
-  } = useUserStore();
+  const { isLoggedIn, logout } = useUserStore();
 
   const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState(name);
+  const [tempName, setTempName] = useState(profile?.name || "");
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn) {
       navigate("/auth", { state: { from: location } });
+    } else {
+      fetchProfile();
     }
   }, [isLoggedIn, navigate, location]);
+
+  useEffect(() => {
+    if (profile) {
+      setTempName(profile.name);
+    }
+  }, [profile]);
 
   const formatPoints = (points: number) => {
     if (points >= 1000) {
@@ -65,33 +66,45 @@ export function ProfilePage() {
     fileInputRef.current?.click();
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", "indistylo_uploads");
+
+        // We can use the existing upload route or upload directly to cloudinary
+        // Since we implemented backend upload, let's use that
+        const response: any = await api.post("/upload/single", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        await updateAvatar(response.url);
+        toast.success("Avatar updated successfully");
+      } catch (error) {
+        console.error("Failed to upload avatar:", error);
+        toast.error("Failed to update avatar");
+      }
     }
   };
 
   const handleServicePreferenceChange = (preference: ServicePreference) => {
-    setServicePreference(preference);
+    updateServicePreference(preference);
   };
 
   const handleNotificationsClick = () => {
     navigate("/notifications");
   };
 
-  // handleEcomOrderClick removed
-
-  // ... removed unused Settings import and handleSettingsClick ...
-
-  const handleSaveName = () => {
-    setName(tempName);
-    setIsEditingName(false);
-    toast.success("Profile updated successfully");
+  const handleSaveName = async () => {
+    try {
+      await updateProfile({ name: tempName });
+      setIsEditingName(false);
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    }
   };
 
   const handleMyProfileClick = () => {
@@ -133,9 +146,9 @@ export function ProfilePage() {
           <button
             onClick={() => navigate("/refer-earn-details")}
             className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border-2 border-yellow-400 flex items-center justify-center bg-transparent hover:bg-yellow-400/10 cursor-pointer transition-colors"
-            aria-label={`Points: ${points}`}>
+            aria-label={`Points: ${profile?.walletBalance || 0}`}>
             <span className="text-[10px] sm:text-[11px] font-bold text-yellow-400 leading-none">
-              {formatPoints(points)}
+              {formatPoints(profile?.walletBalance || 0)}
             </span>
           </button>
         </div>
@@ -146,9 +159,9 @@ export function ProfilePage() {
         <div className="flex items-start gap-4">
           <div className="relative">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gray-400 flex items-center justify-center overflow-hidden">
-              {avatarUrl ? (
+              {profile?.avatarUrl ? (
                 <img
-                  src={avatarUrl}
+                  src={profile.avatarUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
@@ -193,7 +206,7 @@ export function ProfilePage() {
                   className="flex items-center gap-2 group cursor-pointer"
                   onClick={() => setIsEditingName(true)}>
                   <h3 className="text-lg font-bold text-foreground">
-                    {name || "Set Name"}
+                    {profile?.name || "Set Name"}
                   </h3>
                   <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
@@ -202,32 +215,28 @@ export function ProfilePage() {
             <div className="flex items-center gap-2 mb-2">
               <Phone className="h-4 w-4 text-muted-foreground" />
               <span className="text-base sm:text-lg text-foreground">
-                {userPhone}
+                {profile?.phone}
               </span>
             </div>
-            <p className="text-sm sm:text-base text-muted-foreground text-left">
-              Membership Id : {membershipId}
-            </p>
+            {profile?.membershipId && (
+              <p className="text-sm sm:text-base text-muted-foreground text-left">
+                Membership Id : {profile.membershipId}
+              </p>
+            )}
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <Button
             variant="outline"
             className="flex flex-col items-center gap-2 h-auto py-3 bg-card hover:bg-muted/50"
             onClick={handleNotificationsClick}>
             <div className="relative">
               <Bell className="h-5 w-5" />
-              {notificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-yellow-400 text-gray-900 text-[10px] rounded-full min-w-4 h-4 px-1 flex items-center justify-center font-bold">
-                  {notificationsCount > 99 ? "99+" : notificationsCount}
-                </span>
-              )}
             </div>
             <span className="text-xs sm:text-sm">Notifications</span>
           </Button>
-          {/* E-com Order Button Removed */}
           <Button
             variant="outline"
             className="flex flex-col items-center gap-2 h-auto py-3 bg-card hover:bg-muted/50"
@@ -268,11 +277,11 @@ export function ProfilePage() {
                   type="radio"
                   name="servicePreference"
                   value="at-salon"
-                  checked={servicePreference === "at-salon"}
+                  checked={profile?.servicePreference === "at-salon"}
                   onChange={() => handleServicePreferenceChange("at-salon")}
                   className="w-5 h-5 appearance-none rounded-full border-2 border-gray-400 checked:border-yellow-400 checked:bg-yellow-400 relative focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-background transition-all"
                 />
-                {servicePreference === "at-salon" && (
+                {profile?.servicePreference === "at-salon" && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-2 h-2 rounded-full bg-white"></div>
                   </div>
@@ -288,11 +297,11 @@ export function ProfilePage() {
                   type="radio"
                   name="servicePreference"
                   value="at-home"
-                  checked={servicePreference === "at-home"}
+                  checked={profile?.servicePreference === "at-home"}
                   onChange={() => handleServicePreferenceChange("at-home")}
                   className="w-5 h-5 appearance-none rounded-full border-2 border-gray-400 checked:border-yellow-400 checked:bg-yellow-400 relative focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-background transition-all"
                 />
-                {servicePreference === "at-home" && (
+                {profile?.servicePreference === "at-home" && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-2 h-2 rounded-full bg-white"></div>
                   </div>

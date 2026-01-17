@@ -16,17 +16,18 @@ export function AdminAuth() {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulate API delay
-        setTimeout(() => {
+        try {
+            await login(email, password);
+            toast.success("Welcome back, Admin!");
+            navigate("/admin/dashboard");
+        } catch (error: any) {
+            console.error("Login failed:", error);
+            // Error handling is done in store, but we catch here to stop loading state if needed
+            // although store sets loading to false on error.
+            toast.error(error.message || "Invalid credentials");
+        } finally {
             setIsLoading(false);
-            if (email && password) {
-                login(email);
-                toast.success("Welcome back, Admin!");
-                navigate("/admin/dashboard");
-            } else {
-                toast.error("Invalid credentials");
-            }
-        }, 1500);
+        }
     };
 
     return (

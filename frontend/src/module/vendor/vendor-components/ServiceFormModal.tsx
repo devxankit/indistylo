@@ -1,23 +1,33 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Trash2, IndianRupee, Clock } from "lucide-react";
 import {
-  Plus,
-  Trash2,
-  IndianRupee,
-  Clock,
-} from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogBody } from "@/components/ui/dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+  DialogBody,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useServiceStore, type Service, type PricingTier } from "../store/useServiceStore";
+import { useVendorStore } from "../store/useVendorStore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Service, PricingTier } from "../store/useServiceStore";
 import { ImageUpload } from "./ImageUpload";
 
 interface ServiceFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (service: Omit<Service, "id">) => void;
+  onSave: (service: Omit<Service, "_id">) => void;
   service?: Service | null;
-  categories: string[];
 }
 
 export function ServiceFormModal({
@@ -25,53 +35,105 @@ export function ServiceFormModal({
   onOpenChange,
   onSave,
   service,
-  categories,
 }: ServiceFormModalProps) {
   const isEditMode = !!service;
-  const [imagePreview, setImagePreview] = useState<string | null>(service?.image || null);
+  const { fetchCategories, categoryTree } = useServiceStore();
+  const { vendorType } = useVendorStore();
+
+  const isSpaOwner = vendorType === "spa";
+
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    service?.image || null
+  );
 
   const [formData, setFormData] = useState({
     name: service?.name || "",
-    category: service?.category || categories[1] || "",
+    category: service?.category || "",
+    gender: service?.gender || "unisex", // Default to unisex
+    type: service?.type || "at-salon",
     price: service?.price || 0,
     duration: service?.duration || 30,
     description: service?.description || "",
     isActive: service?.isActive ?? true,
-    tags: service?.tags || [] as string[],
-    pricingTiers: service?.pricingTiers || [] as PricingTier[],
+    tags: service?.tags || ([] as string[]),
+    pricingTiers: service?.pricingTiers || ([] as PricingTier[]),
   });
   const [tagInput, setTagInput] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Filter subcategories based on selected header category
+  const filteredSubcategories = useMemo(() => {
+    if (!formData.category) return [];
+
+    // Find the header category object
+    const selectedHeader = categoryTree.find(
+      (h) => h.headerName === formData.category
+    );
+
+    return selectedHeader ? selectedHeader.subcategories : [];
+  }, [formData.category, categoryTree]);
+
+  // Fetch categories when gender changes or modal opens
   useEffect(() => {
-    if (service) {
-      setFormData({
-        name: service.name,
-        category: service.category,
-        price: service.price,
-        duration: service.duration,
-        description: service.description,
-        isActive: service.isActive,
-        tags: service.tags || [],
-        pricingTiers: service.pricingTiers || [],
-      });
-      setImagePreview(service.image || null);
-    } else {
-      setFormData({
-        name: "",
-        category: categories[1] || "",
-        price: 0,
-        duration: 30,
-        description: "",
-        isActive: true,
-        tags: [],
-        pricingTiers: [],
-      });
-      setImagePreview(null);
+    if (open) {
+      const type = isSpaOwner ? "SPA" : "SALON";
+      fetchCategories(formData.gender || "MALE", type);
     }
-    setTagInput("");
-    setErrors({});
-  }, [service, open, categories]);
+  }, [open, formData.gender, isSpaOwner]);
+
+  // Handle form initialization
+  useEffect(() => {
+    if (open) {
+      if (service) {
+        setFormData({
+          name: service.name,
+          category: service.category,
+          gender: service.gender || "unisex",
+          type: service.type || "at-salon",
+          price: service.price,
+          duration: service.duration,
+          description: service.description,
+          isActive: service.isActive,
+          tags: service.tags || [],
+          pricingTiers: service.pricingTiers || [],
+        });
+        setImagePreview(service.image || null);
+      } else {
+        // Initialize with default values for new service
+        // Don't rely on categoryTree here to avoid reset loops
+        setFormData({
+          name: "",
+          category: "", // Will be set by the sync effect
+          gender: "male",
+          type: isSpaOwner ? "spa" : "at-salon",
+          price: 0,
+          duration: 30,
+          description: "",
+          isActive: true,
+          tags: [],
+          pricingTiers: [],
+        });
+        setImagePreview(null);
+      }
+      setTagInput("");
+      setErrors({});
+    }
+  }, [service, open]);
+
+  // Sync selected category with available tree
+  useEffect(() => {
+    if (open && categoryTree.length > 0) {
+      // If no category selected, or selected category not in new tree, defaults to first
+      const currentCategoryExists = categoryTree.some(c => c.headerName === formData.category);
+
+      if (!formData.category || !currentCategoryExists) {
+        setFormData(prev => ({ ...prev, category: categoryTree[0].headerName }));
+      }
+    }
+  }, [categoryTree, open, formData.category]);
+
+  // ... (handlers remain same) ...
+  // Need to copy handlers because this is a replace_file_content but I am replacing top half.
 
   const handleAddTag = useCallback(() => {
     if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
@@ -83,12 +145,15 @@ export function ServiceFormModal({
     }
   }, [tagInput, formData]);
 
-  const handleRemoveTag = useCallback((tag: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter((t) => t !== tag),
-    });
-  }, [formData]);
+  const handleRemoveTag = useCallback(
+    (tag: string) => {
+      setFormData({
+        ...formData,
+        tags: formData.tags.filter((t) => t !== tag),
+      });
+    },
+    [formData]
+  );
 
   const handleAddPricingTier = useCallback(() => {
     const newTier: PricingTier = {
@@ -103,21 +168,27 @@ export function ServiceFormModal({
     });
   }, [formData]);
 
-  const handleUpdatePricingTier = useCallback((id: string, updates: Partial<PricingTier>) => {
-    setFormData({
-      ...formData,
-      pricingTiers: formData.pricingTiers.map((tier) =>
-        tier.id === id ? { ...tier, ...updates } : tier
-      ),
-    });
-  }, [formData]);
+  const handleUpdatePricingTier = useCallback(
+    (id: string, updates: Partial<PricingTier>) => {
+      setFormData({
+        ...formData,
+        pricingTiers: formData.pricingTiers.map((tier) =>
+          tier.id === id ? { ...tier, ...updates } : tier
+        ),
+      });
+    },
+    [formData]
+  );
 
-  const handleRemovePricingTier = useCallback((id: string) => {
-    setFormData({
-      ...formData,
-      pricingTiers: formData.pricingTiers.filter((tier) => tier.id !== id),
-    });
-  }, [formData]);
+  const handleRemovePricingTier = useCallback(
+    (id: string) => {
+      setFormData({
+        ...formData,
+        pricingTiers: formData.pricingTiers.filter((tier) => tier.id !== id),
+      });
+    },
+    [formData]
+  );
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -155,15 +226,20 @@ export function ServiceFormModal({
   const handleSubmit = () => {
     if (!validate()) return;
 
-    const serviceData: Omit<Service, "id"> = {
+    const serviceData: Omit<Service, "_id"> = {
       name: formData.name.trim(),
       category: formData.category,
+      // @ts-ignore
+      gender: formData.gender,
+      // @ts-ignore
+      type: formData.type,
       price: formData.price,
       duration: formData.duration,
       description: formData.description.trim(),
       isActive: formData.isActive,
       tags: formData.tags,
-      pricingTiers: formData.pricingTiers.length > 0 ? formData.pricingTiers : undefined,
+      pricingTiers:
+        formData.pricingTiers.length > 0 ? formData.pricingTiers : undefined,
       image: imagePreview || undefined,
     };
 
@@ -199,52 +275,121 @@ export function ServiceFormModal({
             )}
           </div>
 
-          {/* Service Name */}
+          {/* Gender Selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Service Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => {
-                setFormData({ ...formData, name: e.target.value });
-                setErrors({ ...errors, name: "" });
-              }}
-              placeholder="e.g., Haircut & Styling"
-              className={cn(
-                "w-full h-11 px-3 rounded-lg bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-base",
-                errors.name && "border-red-400"
-              )}
-            />
-            {errors.name && (
-              <p className="text-xs text-red-400">{errors.name}</p>
+            <Label htmlFor="gender">
+              Gender <span className="text-red-400">*</span>
+            </Label>
+            <Select
+              value={formData.gender}
+              onValueChange={(value) => {
+                setFormData({ ...formData, gender: value, name: "" }); // Reset name when gender changes
+                setErrors({ ...errors, gender: "" });
+              }}>
+              <SelectTrigger
+                className={cn(
+                  "w-full h-11 px-3 rounded-lg bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-base"
+                )}>
+                <SelectValue placeholder="Select Gender" />
+              </SelectTrigger>
+              <SelectContent className="z-[9999]">
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Service Type Selection */}
+          {!isSpaOwner && (
+            <div className="space-y-2">
+              <Label htmlFor="type">
+                Service Type <span className="text-red-400">*</span>
+              </Label>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, type: value as any });
+                }}>
+                <SelectTrigger
+                  className={cn(
+                    "w-full h-11 px-3 rounded-lg bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-base"
+                  )}>
+                  <SelectValue placeholder="Select Service Type" />
+                </SelectTrigger>
+                <SelectContent className="z-[9999]">
+                  <SelectItem value="at-salon">At Salon</SelectItem>
+                  <SelectItem value="at-home">At Home</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Category Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="category">
+              Category <span className="text-red-400">*</span>
+            </Label>
+            <Select
+              value={formData.category}
+              onValueChange={(value) => {
+                setFormData({ ...formData, category: value, name: "" }); // Reset name when category changes
+                setErrors({ ...errors, category: "" });
+              }}>
+              <SelectTrigger
+                className={cn(
+                  "w-full h-11 px-3 rounded-lg bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-base",
+                  errors.category && "border-red-400"
+                )}>
+                <SelectValue placeholder="Select Category" />
+              </SelectTrigger>
+              <SelectContent className="z-[9999]">
+                {categoryTree.map((header) => (
+                  <SelectItem key={header.headerName} value={header.headerName}>
+                    {header.headerName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.category && (
+              <p className="text-xs text-red-400">{errors.category}</p>
             )}
           </div>
 
-          {/* Category */}
+          {/* Service Name Selection (Dependent on Category & Gender) */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Category <span className="text-red-400">*</span>
-            </label>
-            <select
-              value={formData.category}
-              onChange={(e) => {
-                setFormData({ ...formData, category: e.target.value });
-                setErrors({ ...errors, category: "" });
+            <Label htmlFor="name">
+              Service Name <span className="text-red-400">*</span>
+            </Label>
+            <Select
+              value={formData.name}
+              onValueChange={(value) => {
+                setFormData({ ...formData, name: value });
+                setErrors({ ...errors, name: "" });
               }}
-              className={cn(
-                "w-full h-11 px-3 rounded-lg bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-base",
-                errors.category && "border-red-400"
-              )}>
-              {categories.filter(c => c !== "All").map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-            {errors.category && (
-              <p className="text-xs text-red-400">{errors.category}</p>
+              disabled={!formData.category}
+            >
+              <SelectTrigger
+                className={cn(
+                  "w-full h-11 px-3 rounded-lg bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-base",
+                  errors.name && "border-red-400"
+                )}>
+                <SelectValue placeholder={!formData.category ? "Select category first" : "Select service"} />
+              </SelectTrigger>
+              <SelectContent className="z-[9999]">
+                {filteredSubcategories.map((sub) => (
+                  <SelectItem key={sub._id} value={sub.name}>
+                    {sub.name}
+                  </SelectItem>
+                ))}
+                {filteredSubcategories.length === 0 && formData.category && (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    No services found.
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            {errors.name && (
+              <p className="text-xs text-red-400">{errors.name}</p>
             )}
           </div>
 
@@ -286,7 +431,10 @@ export function ServiceFormModal({
                 type="number"
                 value={formData.duration || ""}
                 onChange={(e) => {
-                  setFormData({ ...formData, duration: Number(e.target.value) });
+                  setFormData({
+                    ...formData,
+                    duration: Number(e.target.value),
+                  });
                   setErrors({ ...errors, duration: "" });
                 }}
                 placeholder="30"
@@ -354,7 +502,9 @@ export function ServiceFormModal({
                         type="text"
                         value={tier.name}
                         onChange={(e) =>
-                          handleUpdatePricingTier(tier.id, { name: e.target.value })
+                          handleUpdatePricingTier(tier.id, {
+                            name: e.target.value,
+                          })
                         }
                         placeholder="Tier name (e.g., Basic, Premium)"
                         className="w-full h-9 px-3 rounded-lg bg-background border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-sm"
@@ -365,7 +515,9 @@ export function ServiceFormModal({
                           type="number"
                           value={tier.price || ""}
                           onChange={(e) =>
-                            handleUpdatePricingTier(tier.id, { price: Number(e.target.value) })
+                            handleUpdatePricingTier(tier.id, {
+                              price: Number(e.target.value),
+                            })
                           }
                           placeholder="Price"
                           min="0"
@@ -376,7 +528,9 @@ export function ServiceFormModal({
                         type="text"
                         value={tier.description || ""}
                         onChange={(e) =>
-                          handleUpdatePricingTier(tier.id, { description: e.target.value })
+                          handleUpdatePricingTier(tier.id, {
+                            description: e.target.value,
+                          })
                         }
                         placeholder="Tier description (optional)"
                         className="w-full h-9 px-3 rounded-lg bg-background border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-sm"
@@ -430,7 +584,19 @@ export function ServiceFormModal({
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
                       className="hover:text-red-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                      </svg>
                     </button>
                   </span>
                 ))}
@@ -441,14 +607,18 @@ export function ServiceFormModal({
           {/* Active Toggle */}
           <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
             <div>
-              <label className="text-sm font-medium text-foreground">Active</label>
+              <label className="text-sm font-medium text-foreground">
+                Active
+              </label>
               <p className="text-xs text-muted-foreground">
                 Service will be visible to customers
               </p>
             </div>
             <button
               type="button"
-              onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+              onClick={() =>
+                setFormData({ ...formData, isActive: !formData.isActive })
+              }
               className={cn(
                 "relative w-11 h-6 rounded-full transition-colors touch-manipulation",
                 formData.isActive ? "bg-primary" : "bg-muted"
@@ -483,4 +653,3 @@ export function ServiceFormModal({
     </Dialog>
   );
 }
-

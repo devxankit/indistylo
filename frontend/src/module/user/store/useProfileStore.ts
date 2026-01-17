@@ -1,88 +1,79 @@
 import { create } from "zustand";
+import { api } from "../services/apiClient";
 
-export type ServicePreference = "at-salon" | "at-home";
+export type ServicePreference = "at-home" | "at-salon";
 
-interface ProfileState {
-  phoneNumber: string;
-  membershipId: string;
-  avatarUrl: string | null;
-  servicePreference: ServicePreference;
-  setPhoneNumber: (phone: string) => void;
-  setMembershipId: (id: string) => void;
-  setAvatarUrl: (url: string | null) => void;
-  setServicePreference: (preference: ServicePreference) => void;
+export interface UserProfile {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: "user" | "vendor" | "admin";
+  membershipId?: string;
+  avatarUrl?: string | null;
+  servicePreference?: ServicePreference;
+  walletBalance?: number;
+  referralCode?: string;
 }
 
-const STORAGE_KEY = "salon-service-profile";
-
-// Default values
-const defaultState = {
-  phoneNumber: "8225819420",
-  membershipId: "BPC-958958",
-  avatarUrl: null,
-  servicePreference: "at-salon" as ServicePreference,
-};
-
-// Load from localStorage
-const loadFromStorage = (): Partial<ProfileState> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return {
-        phoneNumber: parsed.phoneNumber || defaultState.phoneNumber,
-        membershipId: parsed.membershipId || defaultState.membershipId,
-        avatarUrl: parsed.avatarUrl || defaultState.avatarUrl,
-        servicePreference: parsed.servicePreference || defaultState.servicePreference,
-      };
-    }
-  } catch (error) {
-    console.error("Error loading profile from storage:", error);
-  }
-  return defaultState;
-};
-
-// Save to localStorage
-const saveToStorage = (state: ProfileState) => {
-  try {
-    const stateToSave = {
-      phoneNumber: state.phoneNumber,
-      membershipId: state.membershipId,
-      avatarUrl: state.avatarUrl,
-      servicePreference: state.servicePreference,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  } catch (error) {
-    console.error("Error saving profile to storage:", error);
-  }
-};
-
-const initialState = loadFromStorage();
+interface ProfileState {
+  profile: UserProfile | null;
+  loading: boolean;
+  error: string | null;
+  fetchProfile: () => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  updateServicePreference: (preference: ServicePreference) => Promise<void>;
+  updateAvatar: (avatarUrl: string) => Promise<void>;
+}
 
 export const useProfileStore = create<ProfileState>((set, get) => ({
-  phoneNumber: initialState.phoneNumber || defaultState.phoneNumber,
-  membershipId: initialState.membershipId || defaultState.membershipId,
-  avatarUrl: initialState.avatarUrl || defaultState.avatarUrl,
-  servicePreference: (initialState.servicePreference || defaultState.servicePreference) as ServicePreference,
-  
-  setPhoneNumber: (phone) => {
-    set({ phoneNumber: phone });
-    saveToStorage(get());
+  profile: null,
+  loading: false,
+  error: null,
+
+  fetchProfile: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response: any = await api.get("/auth/me");
+      // Map backend 'avatar' to frontend 'avatarUrl' if needed, or just use response
+      // Backend returns: _id, name, email, phone, role, avatar, location
+      const profileData = {
+        ...response,
+        avatarUrl: response.avatar || response.avatarUrl,
+      };
+      set({ profile: profileData, loading: false });
+    } catch (error: any) {
+      console.error("Failed to fetch profile:", error);
+      set({ error: error.message || "Failed to fetch profile", loading: false });
+    }
   },
-  
-  setMembershipId: (id) => {
-    set({ membershipId: id });
-    saveToStorage(get());
+
+  updateProfile: async (updates) => {
+    set({ loading: true, error: null });
+    try {
+      const response: any = await api.put("/user/profile", updates);
+      set({ profile: response, loading: false });
+    } catch (error: any) {
+      console.error("Failed to update profile:", error);
+      set({ error: error.message || "Failed to update profile", loading: false });
+      throw error;
+    }
   },
-  
-  setAvatarUrl: (url) => {
-    set({ avatarUrl: url });
-    saveToStorage(get());
+
+  updateServicePreference: async (preference) => {
+    try {
+      await get().updateProfile({ servicePreference: preference });
+    } catch (error) {
+      console.error("Failed to update service preference:", error);
+    }
   },
-  
-  setServicePreference: (preference) => {
-    set({ servicePreference: preference });
-    saveToStorage(get());
+
+  updateAvatar: async (avatarUrl) => {
+    try {
+      await get().updateProfile({ avatarUrl });
+    } catch (error) {
+      console.error("Failed to update avatar:", error);
+    }
   },
 }));
 

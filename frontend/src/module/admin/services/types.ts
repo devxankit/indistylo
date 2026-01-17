@@ -20,6 +20,13 @@ export interface AdminVendorListItem {
     status: VendorStatus;
     joinedDate: string;
     documentsVerified: boolean;
+    email: string;
+    verificationDocuments: {
+        _id: string;
+        type: string;
+        url: string;
+        status: 'pending' | 'verified' | 'rejected';
+    }[];
 }
 
 export interface AdminBookingListItem {
@@ -33,9 +40,10 @@ export interface AdminBookingListItem {
 }
 
 export interface AdminStats {
-    totalUsers: number;
+    totalCustomers: number;
     totalVendors: number;
-    pendingApprovals: number;
-    activeOrders: number;
+    totalBookings: number;
     totalRevenue: number;
+    pendingApprovals?: number;
+    adminWallet?: number;
 }

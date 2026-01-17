@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Phone,
   Mail,
-  Star,
   MessageSquare,
   ArrowLeft,
   Copy,
@@ -20,107 +19,24 @@ import {
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
-
-type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
-
-interface Booking {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail?: string;
-  service: string;
-  date: string;
-  time: string;
-  status: BookingStatus;
-  amount: number;
-  address?: string;
-  duration: string;
-  rating?: number;
-  notes?: string;
-  paymentMethod: "cash" | "online" | "wallet";
-}
-
-// Mock bookings data (in production, this would come from an API)
-const mockBookings: Booking[] = [
-  {
-    id: "1",
-    customerName: "Rajesh Kumar",
-    customerPhone: "+91 9876543210",
-    customerEmail: "rajesh@example.com",
-    service: "Haircut & Styling",
-    date: "2024-01-15",
-    time: "10:00 AM",
-    status: "confirmed",
-    amount: 499,
-    address: "123 Main Street, City, State - 123456",
-    duration: "45 min",
-    rating: 4.8,
-    paymentMethod: "online",
-  },
-  {
-    id: "2",
-    customerName: "Priya Sharma",
-    customerPhone: "+91 9876543211",
-    customerEmail: "priya@example.com",
-    service: "Hair Color & Treatment",
-    date: "2024-01-15",
-    time: "2:00 PM",
-    status: "pending",
-    amount: 1299,
-    address: "456 Park Avenue, City, State - 123456",
-    duration: "2 hours",
-    paymentMethod: "wallet",
-    notes: "Customer prefers natural hair color",
-  },
-  {
-    id: "3",
-    customerName: "Amit Singh",
-    customerPhone: "+91 9876543212",
-    service: "Beard Trim",
-    date: "2024-01-16",
-    time: "11:00 AM",
-    status: "confirmed",
-    amount: 299,
-    duration: "30 min",
-    paymentMethod: "cash",
-  },
-  {
-    id: "4",
-    customerName: "Sneha Patel",
-    customerPhone: "+91 9876543213",
-    customerEmail: "sneha@example.com",
-    service: "Facial Treatment",
-    date: "2024-01-14",
-    time: "3:00 PM",
-    status: "completed",
-    amount: 899,
-    duration: "1 hour",
-    rating: 5.0,
-    paymentMethod: "online",
-  },
-  {
-    id: "5",
-    customerName: "Vikram Mehta",
-    customerPhone: "+91 9876543214",
-    service: "Haircut",
-    date: "2024-01-13",
-    time: "4:00 PM",
-    status: "cancelled",
-    amount: 399,
-    duration: "40 min",
-    paymentMethod: "online",
-  },
-];
+import { MapRoute } from "@/module/user/components/MapRoute";
+import {
+  useVendorBookingStore,
+  type BookingStatus,
+} from "../store/useVendorBookingStore";
+import { toast } from "sonner";
 
 const getStatusIcon = (status: BookingStatus) => {
   switch (status) {
     case "confirmed":
+    case "upcoming":
       return <CheckCircle2 className="w-4 h-4 text-green-400" />;
     case "pending":
       return <AlertCircle className="w-4 h-4 text-yellow-400" />;
     case "completed":
       return <CheckCircle2 className="w-4 h-4 text-blue-400" />;
     case "cancelled":
+    case "missed":
       return <XCircle className="w-4 h-4 text-red-400" />;
   }
 };
@@ -128,12 +44,14 @@ const getStatusIcon = (status: BookingStatus) => {
 const getStatusColor = (status: BookingStatus) => {
   switch (status) {
     case "confirmed":
+    case "upcoming":
       return "bg-green-400/20 text-green-400 border-green-400/30";
     case "pending":
       return "bg-yellow-400/20 text-yellow-400 border-yellow-400/30";
     case "completed":
       return "bg-blue-400/20 text-blue-400 border-blue-400/30";
     case "cancelled":
+    case "missed":
       return "bg-red-400/20 text-red-400 border-red-400/30";
   }
 };
@@ -143,25 +61,37 @@ export function VendorBookingDetail() {
   const navigate = useNavigate();
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const booking = useMemo(() => {
-    return mockBookings.find((b) => b.id === id);
-  }, [id]);
+  const { bookings, fetchBookings, updateBookingStatus, loading } =
+    useVendorBookingStore();
 
   useEffect(() => {
-    if (!booking) {
-      // Redirect to bookings list if booking not found
+    if (bookings.length === 0) {
+      fetchBookings();
+    }
+  }, [fetchBookings, bookings.length]);
+
+  const booking = useMemo(() => {
+    return bookings.find((b) => b._id === id);
+  }, [id, bookings]);
+
+  useEffect(() => {
+    if (!loading && bookings.length > 0 && !booking) {
+      // Redirect to bookings list if booking not found after fetching
       navigate("/vendor/bookings");
     }
-  }, [booking, navigate]);
+  }, [booking, navigate, loading, bookings.length]);
 
   const handleStatusChange = useCallback(
-    (newStatus: BookingStatus) => {
-      // Handle status change
-      console.log("Status change", id, newStatus);
-      // In production, this would make an API call
-      // After success, you might navigate back or show a success message
+    async (newStatus: BookingStatus) => {
+      if (!id) return;
+      try {
+        await updateBookingStatus(id, newStatus);
+        toast.success(`Booking ${newStatus} successfully`);
+      } catch (error) {
+        toast.error("Failed to update booking status");
+      }
     },
-    [id]
+    [id, updateBookingStatus]
   );
 
   const copyToClipboard = useCallback((text: string, field: string) => {
@@ -218,7 +148,7 @@ export function VendorBookingDetail() {
               Booking Details
             </h1>
             <p className="text-[1px] text-muted-foreground truncate">
-              ID: {booking.id}
+              ID: {booking._id}
             </p>
           </div>
           <motion.div
@@ -229,8 +159,8 @@ export function VendorBookingDetail() {
             animate={
               booking.status === "pending"
                 ? {
-                    scale: [1, 1.05, 1],
-                  }
+                  scale: [1, 1.05, 1],
+                }
                 : {}
             }
             transition={{ duration: 2, repeat: Infinity }}>
@@ -261,12 +191,9 @@ export function VendorBookingDetail() {
                 <h2 className="text-xl font-bold text-foreground truncate">
                   {booking.customerName}
                 </h2>
-                {booking.status === "completed" && booking.rating && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-semibold text-foreground">
-                      {booking.rating}
-                    </span>
+                {booking.status === "completed" && (
+                  <div className="flex items-center gap-2 mb-1">
+                    {/* Rating removed as it is not in the Booking type */}
                   </div>
                 )}
               </div>
@@ -377,7 +304,7 @@ export function VendorBookingDetail() {
             <motion.div variants={staggerItem} className="space-y-1">
               <span className="text-xs text-muted-foreground">Service</span>
               <p className="text-base font-semibold text-foreground">
-                {booking.service}
+                {booking.serviceName}
               </p>
             </motion.div>
 
@@ -464,6 +391,30 @@ export function VendorBookingDetail() {
           </motion.div>
         </motion.div>
 
+        {/* Customer Location Map (For At-Home Services) */}
+        {booking.type === "at-home" && booking.geo && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...transitions.smooth, delay: 0.25 }}
+            className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="w-5 h-5 text-primary shrink-0" />
+              <h3 className="text-lg font-semibold text-foreground">
+                Customer Location
+              </h3>
+            </div>
+
+            <MapRoute
+              destination={{
+                lat: booking.geo.coordinates[1],
+                lng: booking.geo.coordinates[0]
+              }}
+            />
+          </motion.div>
+        )}
+
         {/* Payment Info Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -549,17 +500,17 @@ export function VendorBookingDetail() {
 
           {(booking.status === "completed" ||
             booking.status === "cancelled") && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-4">
-              <p className="text-sm text-muted-foreground">
-                {booking.status === "completed"
-                  ? "This booking has been completed"
-                  : "This booking has been cancelled"}
-              </p>
-            </motion.div>
-          )}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-4">
+                <p className="text-sm text-muted-foreground">
+                  {booking.status === "completed"
+                    ? "This booking has been completed"
+                    : "This booking has been cancelled"}
+                </p>
+              </motion.div>
+            )}
         </motion.div>
       </div>
     </div>

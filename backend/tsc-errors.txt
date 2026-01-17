@@ -1,0 +1,9 @@
+﻿src/modules/admin/index.ts(22,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AdminAuthRequest, res: Response, next: NextFunction) => Promise<void>' is not assignable to parameter of type 'PathParams'.
+src/modules/user/index.ts(12,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: UserAuthRequest, res: Response, next: NextFunction) => Promise<void>' is not assignable to parameter of type 'PathParams'.
+src/modules/vendor/index.ts(15,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: VendorAuthRequest, res: Response, next: NextFunction) => Promise<void>' is not assignable to parameter of type 'PathParams'.

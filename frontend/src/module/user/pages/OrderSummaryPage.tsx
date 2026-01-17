@@ -1,18 +1,22 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Plus, Tag, User, Star } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Tag, User } from "lucide-react";
 import { useCartStore } from "../store/useCartStore";
 import { Button } from "@/components/ui/button";
 import { AddressDialog } from "../components/AddressDialog";
 import { useState } from "react";
 import { useAddressStore } from "../store/useAddressStore";
 import { useBookingStore } from "../store/useBookingStore";
+import { useSalonStore } from "../store/useSalonStore";
 import { SlotPicker } from "../components/SlotPicker";
-import { mockProfessionals } from "../services/mockData";
 import { cn } from "@/lib/utils";
 import {
   PaymentMethodPicker,
   type PaymentMethod,
 } from "../components/PaymentMethodPicker";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
+import { loadRazorpay } from "../utils/razorpay";
+import { useUserStore } from "../store/useUserStore";
 
 export function OrderSummaryPage() {
   const navigate = useNavigate();
@@ -26,17 +30,40 @@ export function OrderSummaryPage() {
     clearCart,
   } = useCartStore();
   const { getSelectedAddress } = useAddressStore();
-  const { addBookings } = useBookingStore();
+  const { createOrder } = useBookingStore();
+  const { staff, loading: staffLoading, fetchStaff } = useSalonStore();
+
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("salon");
-  const [selectedProfessional, setSelectedProfessional] = useState(
-    mockProfessionals[3].id
-  );
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("online");
+  const [selectedProfessional, setSelectedProfessional] = useState("any");
   const [couponCode, setCouponCode] = useState("");
   const [isCouponApplied, setIsCouponApplied] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (items.length > 0) {
+      const salonId = items[0].salonId;
+      if (salonId) {
+        fetchStaff(salonId);
+      } else if (items[0].type === "at-home") {
+        // For home services, fetch the "IndiStylo Home Services" salon
+        useSalonStore
+          .getState()
+          .fetchSalons({ search: "IndiStylo Home Services" })
+          .then(() => {
+            const homeSalon = useSalonStore
+              .getState()
+              .salons.find((s) => s.name === "IndiStylo Home Services");
+            if (homeSalon) {
+              fetchStaff(homeSalon._id || homeSalon.id || "");
+            }
+          });
+      }
+    }
+  }, [items, fetchStaff]);
 
   const selectedAddress = getSelectedAddress();
 
@@ -49,10 +76,12 @@ export function OrderSummaryPage() {
   const discountAmount = isCouponApplied ? 50 : 0;
   const finalTotal = Math.max(0, getTotal() - discountAmount);
 
-  const handlePlaceOrder = () => {
-    if (items.length === 0 || orderPlaced) return;
+  const handlePlaceOrder = async () => {
+    if (items.length === 0 || orderPlaced || isLoading) return;
 
-    if (!selectedAddress) {
+    const hasAtHomeService = items.some((item) => item.type === "at-home");
+
+    if (hasAtHomeService && !selectedAddress) {
       setIsAddressDialogOpen(true);
       return;
     }
@@ -61,33 +90,84 @@ export function OrderSummaryPage() {
       return;
     }
 
-    // Create bookings from cart items
-    const newBookings = items.map((item) => ({
-      salonName: item.salonName || "Home Service",
-      service: item.title,
-      date: selectedDate,
-      time: selectedTime,
-      status: "upcoming" as const,
-      type: item.type || ("at-home" as const),
-    }));
+    setIsLoading(true);
+    try {
+      // Create order with all items
+      const orderData = {
+        items: items.map(item => ({
+          type: item.itemType || ((item as any).services || (item as any).title ? 'package' : 'service'),
+          id: item._id || item.id,
+          quantity: item.quantity
 
-    // Add bookings to store
-    addBookings(newBookings);
+        })),
+        date: selectedDate,
+        time: selectedTime,
+        notes: "",
+        address: hasAtHomeService && selectedAddress ? `${selectedAddress.addressLine1}, ${selectedAddress.addressLine2 ? selectedAddress.addressLine2 + ', ' : ''}${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.pincode}` : undefined,
+        professionalId: selectedProfessional === "any" ? undefined : selectedProfessional,
+        salonId: items[0].salonId || (items[0].type === 'at-home' ? undefined : undefined),
+        paymentMethod: paymentMethod
+      };
 
-    // Clear cart
-    clearCart();
+      const response = await createOrder(orderData);
 
-    // Show order placed message
-    setOrderPlaced(true);
+      if (response && response.razorpayOrderId) {
+        const res = await loadRazorpay();
+        if (!res) {
+          alert("Razorpay SDK failed to load. Are you online?");
+          return;
+        }
 
-    // Navigate to bookings page after 2 seconds
-    setTimeout(() => {
-      navigate("/bookings");
-    }, 2000);
+        const user = useUserStore.getState().user;
+
+        const options = {
+          key: response.keyId,
+          amount: (response.order.totalAmount || finalTotal) * 100,
+          currency: "INR",
+          name: "IndiStylo",
+          description: "Order Payment",
+          order_id: response.razorpayOrderId,
+          handler: async function (response: any) {
+            try {
+              await useBookingStore.getState().verifyPayment({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+
+              clearCart();
+              setOrderPlaced(true);
+              setTimeout(() => {
+                navigate("/bookings");
+              }, 2000);
+            } catch (err) {
+              console.error("Payment verification failed", err);
+              alert("Payment verification failed. Please contact support.");
+            }
+          },
+          prefill: {
+            name: (user as any)?.name || "",
+            email: user?.email || "",
+            contact: user?.phone || "",
+          },
+          theme: {
+            color: "#FACC15",
+          },
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.open();
+      }
+
+    } catch (error) {
+      console.error("Failed to place order:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleQuantityChange = (itemId: string, change: number) => {
-    const item = items.find((i) => i.id === itemId);
+    const item = items.find((i) => (i._id || i.id) === itemId);
     if (item) {
       const newQuantity = item.quantity + change;
       if (newQuantity <= 0) {
@@ -97,6 +177,13 @@ export function OrderSummaryPage() {
       }
     }
   };
+
+  const hasAtHomeService = items.some((item) => item.type === "at-home");
+  const isButtonDisabled =
+    (hasAtHomeService && !selectedAddress) ||
+    !selectedDate ||
+    !selectedTime ||
+    orderPlaced;
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,51 +204,60 @@ export function OrderSummaryPage() {
             <h2 className="text-lg font-semibold text-foreground">
               Service Details
             </h2>
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="bg-transparent border border-border rounded-lg p-4 space-y-3">
-                {/* Service Name and Category */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {item.category
-                        ? item.category.charAt(0).toUpperCase() +
-                          item.category.slice(1)
-                        : "Male"}
-                    </p>
-                  </div>
-                  <span className="text-green-500 font-bold text-lg">
-                    ₹{item.price}
-                  </span>
-                </div>
-
-                {/* Quantity Selector */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Quantity:
-                  </span>
-                  <div className="flex items-center gap-1 border border-yellow-400 rounded px-1.5 py-0.5">
-                    <button
-                      onClick={() => handleQuantityChange(item.id, -1)}
-                      className="text-yellow-400 hover:text-yellow-500 p-0.5">
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="text-foreground font-medium text-xs min-w-[16px] text-center">
-                      {item.quantity}
+            {items.map((item) => {
+              const itemId = item._id || item.id;
+              return (
+                <div
+                  key={itemId}
+                  className="bg-transparent border border-border rounded-lg p-4 space-y-3">
+                  {/* Service Name and Category */}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground">
+                        {item.name || item.title}
+                      </h3>
+                      <div className="flex gap-2 text-xs text-muted-foreground mt-1">
+                        <span>
+                          {item.duration ? `${item.duration} mins` : "Duration N/A"}
+                        </span>
+                        <span>•</span>
+                        <span>
+                          {item.category
+                            ? item.category.charAt(0).toUpperCase() +
+                            item.category.slice(1)
+                            : "Male"}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-green-500 font-bold text-lg">
+                      ₹{item.price}
                     </span>
-                    <button
-                      onClick={() => handleQuantityChange(item.id, 1)}
-                      className="text-yellow-400 hover:text-yellow-500 p-0.5">
-                      <Plus className="w-3 h-3" />
-                    </button>
+                  </div>
+
+                  {/* Quantity Selector */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Quantity:
+                    </span>
+                    <div className="flex items-center gap-1 border border-yellow-400 rounded px-1.5 py-0.5">
+                      <button
+                        onClick={() => handleQuantityChange(itemId, -1)}
+                        className="text-yellow-400 hover:text-yellow-500 p-0.5">
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-foreground font-medium text-xs min-w-[16px] text-center">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => handleQuantityChange(itemId, 1)}
+                        className="text-yellow-400 hover:text-yellow-500 p-0.5">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">
@@ -181,17 +277,36 @@ export function OrderSummaryPage() {
               Select Professional
             </h2>
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-              {mockProfessionals.map((pro) => (
+              <button
+                onClick={() => setSelectedProfessional("any")}
+                className={cn(
+                  "flex-shrink-0 w-24 flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all",
+                  selectedProfessional === "any"
+                    ? "border-yellow-400 bg-yellow-400/10 shadow-sm"
+                    : "border-border bg-card hover:border-yellow-400/50"
+                )}>
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-6 h-6 text-primary" />
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-bold text-foreground truncate w-20">
+                    Any
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">Available</p>
+                </div>
+              </button>
+
+              {staff.map((pro) => (
                 <button
-                  key={pro.id}
-                  onClick={() => setSelectedProfessional(pro.id)}
+                  key={pro._id}
+                  onClick={() => setSelectedProfessional(pro._id)}
                   className={cn(
-                    "flex flex-col items-center min-w-[140px] p-4 rounded-2xl border transition-all",
-                    selectedProfessional === pro.id
-                      ? "bg-yellow-400/10 border-yellow-400 ring-1 ring-yellow-400"
-                      : "bg-card border-border hover:border-yellow-400/50"
+                    "flex-shrink-0 w-24 flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all",
+                    selectedProfessional === pro._id
+                      ? "border-yellow-400 bg-yellow-400/10 shadow-sm"
+                      : "border-border bg-card hover:border-yellow-400/50"
                   )}>
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3 overflow-hidden border-2 border-background">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center">
                     {pro.image ? (
                       <img
                         src={pro.image}
@@ -199,21 +314,25 @@ export function OrderSummaryPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User className="w-8 h-8 text-muted-foreground" />
+                      <User className="w-6 h-6 text-primary" />
                     )}
                   </div>
-                  <p className="text-sm font-bold text-foreground text-center line-clamp-1">
-                    {pro.name}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground text-center mt-0.5">
-                    {pro.role}
-                  </p>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <span className="text-[10px] font-bold">{pro.rating}</span>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-foreground truncate w-20">
+                      {pro.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate w-20">
+                      {pro.role}
+                    </p>
                   </div>
                 </button>
               ))}
+
+              {staffLoading && staff.length === 0 && (
+                <div className="flex items-center justify-center w-full py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -233,6 +352,7 @@ export function OrderSummaryPage() {
               }}
               selectedDate={selectedDate}
               selectedTime={selectedTime}
+              salonId={items[0]?.salonId}
             />
           </div>
         )}
@@ -407,24 +527,21 @@ export function OrderSummaryPage() {
               </p>
             </div>
             <Button
-              className={`flex-1 py-6 rounded-2xl text-lg font-bold transition-all bg-yellow-400 text-white shadow-lg shadow-yellow-400/20 active:scale-95 ${
-                (!selectedAddress || !selectedDate || !selectedTime) &&
-                !!selectedAddress // Enable if no address
+              className={cn(
+                "flex-1 py-6 rounded-2xl text-lg font-bold transition-all bg-yellow-400 text-white shadow-lg shadow-yellow-400/20 active:scale-95",
+                isButtonDisabled
                   ? "opacity-50 cursor-not-allowed"
                   : "hover:bg-yellow-500"
-              }`}
+              )}
               onClick={handlePlaceOrder}
-              disabled={
-                (selectedAddress && (!selectedDate || !selectedTime)) || // Disable only if address selected but no slot
-                orderPlaced
-              }>
+              disabled={isButtonDisabled}>
               {orderPlaced
                 ? "Booking..."
-                : !selectedAddress
-                ? "Add Address"
-                : !selectedDate || !selectedTime
-                ? "Select Slot"
-                : "Place Order"}
+                : hasAtHomeService && !selectedAddress
+                  ? "Add Address"
+                  : !selectedDate || !selectedTime
+                    ? "Select Slot"
+                    : "Place Order"}
             </Button>
           </div>
         </div>

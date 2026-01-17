@@ -1,143 +1,95 @@
 import { create } from "zustand";
+import { api } from "../../user/services/apiClient";
 
 export interface Review {
-  id: string;
-  customerId: string;
-  customerName: string;
+  _id: string;
+  user: {
+    name: string;
+    avatar?: string;
+  };
   rating: number;
   comment: string;
-  date: string;
+  createdAt: string;
   service: string;
-  likes: number;
-  dislikes: number;
   response?: string;
   status: "published" | "pending" | "archived";
+  likes?: number;
+  dislikes?: number;
 }
 
 interface ReviewState {
   reviews: Review[];
-  addResponse: (reviewId: string, response: string) => void;
-  updateResponse: (reviewId: string, response: string) => void;
-  deleteResponse: (reviewId: string) => void;
-  updateReviewStatus: (reviewId: string, status: Review["status"]) => void;
+  fetchReviews: () => Promise<void>;
+  addResponse: (reviewId: string, response: string) => Promise<void>;
+  updateResponse: (reviewId: string, response: string) => Promise<void>;
+  deleteResponse: (reviewId: string) => Promise<void>;
   getReview: (reviewId: string) => Review | undefined;
 }
 
-// Initial mock reviews data
-const initialReviews: Review[] = [
-  {
-    id: "1",
-    customerId: "1",
-    customerName: "Rajesh Kumar",
-    rating: 5,
-    comment: "Excellent service! The stylist understood exactly what I wanted. Will definitely come back.",
-    date: "2024-01-15",
-    service: "Haircut & Styling",
-    likes: 12,
-    dislikes: 0,
-    status: "published",
-  },
-  {
-    id: "2",
-    customerId: "2",
-    customerName: "Priya Sharma",
-    rating: 4,
-    comment: "Good experience overall. The color turned out great but took a bit longer than expected.",
-    date: "2024-01-12",
-    service: "Hair Color & Treatment",
-    likes: 8,
-    dislikes: 1,
-    status: "published",
-  },
-  {
-    id: "3",
-    customerId: "3",
-    customerName: "Amit Singh",
-    rating: 5,
-    comment: "Best beard trim I've ever had! The attention to detail is impressive.",
-    date: "2024-01-10",
-    service: "Beard Trim",
-    likes: 15,
-    dislikes: 0,
-    status: "published",
-    response: "Thank you for your kind words, Amit! We're glad you enjoyed our service. Looking forward to seeing you again soon!",
-  },
-  {
-    id: "4",
-    customerId: "4",
-    customerName: "Sneha Patel",
-    rating: 5,
-    comment: "Absolutely loved my facial! My skin feels so refreshed and glowing.",
-    date: "2024-01-08",
-    service: "Facial Treatment",
-    likes: 9,
-    dislikes: 0,
-    status: "published",
-  },
-  {
-    id: "5",
-    customerId: "5",
-    customerName: "Vikram Mehta",
-    rating: 3,
-    comment: "Service was okay but felt rushed. Expected better for the price point.",
-    date: "2023-12-28",
-    service: "Haircut",
-    likes: 3,
-    dislikes: 5,
-    status: "published",
-    response: "We apologize for your experience, Vikram. We'd like to offer you a complimentary service to make it right. Please contact us to schedule.",
-  },
-  {
-    id: "6",
-    customerId: "6",
-    customerName: "Anjali Desai",
-    rating: 5,
-    comment: "Outstanding service as always! This is my go-to salon for all beauty needs.",
-    date: "2024-01-14",
-    service: "Hair Spa",
-    likes: 20,
-    dislikes: 0,
-    status: "published",
-  },
-];
-
 export const useReviewStore = create<ReviewState>((set, get) => ({
-  reviews: initialReviews,
+  reviews: [],
 
-  addResponse: (reviewId, response) => {
-    set((state) => ({
-      reviews: state.reviews.map((review) =>
-        review.id === reviewId ? { ...review, response } : review
-      ),
-    }));
+  fetchReviews: async () => {
+    try {
+      const response: any = await api.get("/vendor/reviews");
+      set({ reviews: response });
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error);
+    }
   },
 
-  updateResponse: (reviewId, response) => {
-    set((state) => ({
-      reviews: state.reviews.map((review) =>
-        review.id === reviewId ? { ...review, response } : review
-      ),
-    }));
+  addResponse: async (reviewId, response) => {
+    try {
+      const updatedReview: any = await api.post(
+        `/vendor/reviews/${reviewId}/reply`,
+        { response }
+      );
+      set((state) => ({
+        reviews: state.reviews.map((r) =>
+          r._id === reviewId ? updatedReview : r
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to add response:", error);
+      throw error;
+    }
   },
 
-  deleteResponse: (reviewId) => {
-    set((state) => ({
-      reviews: state.reviews.map((review) =>
-        review.id === reviewId ? { ...review, response: undefined } : review
-      ),
-    }));
+  updateResponse: async (reviewId, response) => {
+    try {
+      const updatedReview: any = await api.post(
+        `/vendor/reviews/${reviewId}/reply`,
+        { response }
+      );
+      set((state) => ({
+        reviews: state.reviews.map((r) =>
+          r._id === reviewId ? updatedReview : r
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to update response:", error);
+      throw error;
+    }
   },
 
-  updateReviewStatus: (reviewId, status) => {
-    set((state) => ({
-      reviews: state.reviews.map((review) =>
-        review.id === reviewId ? { ...review, status } : review
-      ),
-    }));
+  deleteResponse: async (reviewId) => {
+    try {
+      const updatedReview: any = await api.post(
+        `/vendor/reviews/${reviewId}/reply`,
+        { response: "" }
+      );
+      set((state) => ({
+        reviews: state.reviews.map((r) =>
+          r._id === reviewId ? updatedReview : r
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to delete response:", error);
+      throw error;
+    }
   },
 
   getReview: (reviewId) => {
-    return get().reviews.find((review) => review.id === reviewId);
+    return get().reviews.find((review) => review._id === reviewId);
   },
 }));
-

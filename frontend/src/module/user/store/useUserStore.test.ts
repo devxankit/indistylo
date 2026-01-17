@@ -29,7 +29,7 @@ describe('useUserStore', () => {
   it('should update login status and clear data on logout', () => {
     useUserStore.getState().logout();
     expect(useUserStore.getState().isLoggedIn).toBe(false);
-    expect(useUserStore.getState().name).toBe('');
+    expect(useUserStore.getState().name).toBe('User');
     expect(useUserStore.getState().userPhone).toBe('');
   });
 

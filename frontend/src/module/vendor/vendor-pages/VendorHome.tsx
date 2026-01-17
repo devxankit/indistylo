@@ -15,100 +15,16 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
 import { useVendorStore } from "../store/useVendorStore";
+import { useVendorBookingStore } from "../store/useVendorBookingStore";
+import { useVendorEarningsStore } from "../store/useVendorEarningsStore";
+import { useVendorAnalyticsStore } from "../store/useVendorAnalyticsStore";
 import { useCountUp } from "@/hooks/useCountUp";
 import { useTouchFeedback } from "@/lib/touch";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import { isToday } from "date-fns";
+import { toast } from "sonner";
 
-// Mock data for vendor dashboard
-const recentBookings = [
-  {
-    id: "1",
-    customerName: "Rajesh Kumar",
-    service: "Haircut & Styling",
-    date: "2024-01-15",
-    time: "10:00 AM",
-    status: "confirmed",
-    amount: 499,
-  },
-  {
-    id: "2",
-    customerName: "Priya Sharma",
-    service: "Hair Color & Treatment",
-    date: "2024-01-15",
-    time: "2:00 PM",
-    status: "pending",
-    amount: 1299,
-  },
-  {
-    id: "3",
-    customerName: "Amit Singh",
-    service: "Beard Trim",
-    date: "2024-01-16",
-    time: "11:00 AM",
-    status: "confirmed",
-    amount: 299,
-  },
-];
-
-// Today's schedule mock data
-const todaySchedule = [
-  {
-    id: "1",
-    customerName: "Rajesh Kumar",
-    service: "Haircut & Styling",
-    time: "10:00 AM",
-    duration: "45 min",
-    status: "upcoming",
-  },
-  {
-    id: "2",
-    customerName: "Priya Sharma",
-    service: "Hair Color & Treatment",
-    time: "2:00 PM",
-    duration: "2 hours",
-    status: "confirmed",
-  },
-  {
-    id: "3",
-    customerName: "Sneha Patel",
-    service: "Facial Treatment",
-    time: "4:00 PM",
-    duration: "1 hour",
-    status: "confirmed",
-  },
-];
-
-const statsCards = [
-  {
-    title: "Today's Revenue",
-    value: "₹2,450",
-    change: "+12%",
-    icon: IndianRupee,
-    trend: "up",
-  },
-  {
-    title: "Total Bookings",
-    value: "24",
-    change: "+5",
-    icon: Calendar,
-    trend: "up",
-  },
-  {
-    title: "Active Customers",
-    value: "156",
-    change: "+8",
-    icon: Users,
-    trend: "up",
-  },
-  {
-    title: "Growth Rate",
-    value: "18%",
-    change: "+3%",
-    icon: TrendingUp,
-    trend: "up",
-  },
-];
-
+// Search terms for placeholder animation
 const searchTerms = [
   "bookings",
   "customers",
@@ -118,81 +34,160 @@ const searchTerms = [
 ];
 
 // Memoized stat card component for performance
-const StatCard = memo(
-  ({ stat }: { stat: (typeof statsCards)[0]; index: number }) => {
-    const Icon = stat.icon;
-    const { isActive, ...touchHandlers } = useTouchFeedback();
+const StatCard = memo(({ stat }: { stat: any; index: number }) => {
+  const Icon = stat.icon;
+  const { isActive, ...touchHandlers } = useTouchFeedback();
 
-    // Parse numeric value for animation
-    const numericValue = useMemo(() => {
-      const match = stat.value.match(/[\d,]+/);
-      return match ? parseInt(match[0].replace(/,/g, "")) : 0;
-    }, [stat.value]);
+  // Parse numeric value for animation
+  const numericValue = useMemo(() => {
+    const match = stat.value.match(/[\d,]+/);
+    return match ? parseInt(match[0].replace(/,/g, "")) : 0;
+  }, [stat.value]);
 
-    const animatedValue = useCountUp(numericValue, { duration: 1500 });
-    const displayValue = stat.value.includes("₹")
-      ? `₹${animatedValue.toLocaleString()}`
-      : stat.value.replace(/[\d,]+/, animatedValue.toLocaleString());
+  const animatedValue = useCountUp(numericValue, { duration: 1500 });
+  const displayValue = stat.value.includes("₹")
+    ? `₹${animatedValue.toLocaleString()}`
+    : stat.value.replace(/[\d,]+/, animatedValue.toLocaleString());
 
-    return (
-      <motion.div
-        variants={staggerItem}
-        initial="hidden"
-        animate="visible"
-        className={cn(
-          "bg-gradient-to-br from-card to-card/80 border border-border rounded-xl p-4 space-y-2",
-          "hover:border-primary/50 transition-all cursor-pointer",
-          "active:scale-[0.98] touch-manipulation",
-          "min-h-[120px] flex flex-col justify-between"
-        )}
-        style={{ minHeight: "120px" }}
-        {...touchHandlers}>
-        <div className="flex items-center justify-between">
-          <div className="p-2.5 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
-            <Icon className="w-5 h-5 text-primary" />
-          </div>
-          <motion.span
-            className={cn(
-              "text-xs font-medium px-2 py-1 rounded-full",
-              stat.trend === "up"
-                ? "bg-green-400/20 text-green-400"
-                : "bg-red-400/20 text-red-400"
-            )}
-            animate={stat.trend === "up" ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}>
-            {stat.change}
-          </motion.span>
+  return (
+    <motion.div
+      variants={staggerItem}
+      initial="hidden"
+      animate="visible"
+      className={cn(
+        "bg-gradient-to-br from-card to-card/80 border border-border rounded-xl p-4 space-y-2",
+        "hover:border-primary/50 transition-all cursor-pointer",
+        "active:scale-[0.98] touch-manipulation",
+        "min-h-[120px] flex flex-col justify-between"
+      )}
+      style={{ minHeight: "120px" }}
+      {...touchHandlers}>
+      <div className="flex items-center justify-between">
+        <div className="p-2.5 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+          <Icon className="w-5 h-5 text-primary" />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">{stat.title}</p>
-          <motion.p
-            className="text-xl font-bold text-foreground mt-1"
-            key={animatedValue}
-            initial={{ scale: 1.1 }}
-            animate={{ scale: 1 }}
-            transition={transitions.quick}>
-            {displayValue}
-          </motion.p>
-        </div>
-      </motion.div>
-    );
-  }
-);
+        <motion.span
+          className={cn(
+            "text-xs font-medium px-2 py-1 rounded-full",
+            stat.trend === "up"
+              ? "bg-green-400/20 text-green-400"
+              : "bg-red-400/20 text-red-400"
+          )}
+          animate={stat.trend === "up" ? { scale: [1, 1.1, 1] } : {}}
+          transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}>
+          {stat.change}
+        </motion.span>
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground mb-1">{stat.title}</p>
+        <motion.p
+          className="text-xl font-bold text-foreground mt-1"
+          key={animatedValue}
+          initial={{ scale: 1.1 }}
+          animate={{ scale: 1 }}
+          transition={transitions.quick}>
+          {displayValue}
+        </motion.p>
+      </div>
+    </motion.div>
+  );
+});
 
 StatCard.displayName = "StatCard";
 
 export function VendorHome() {
   const navigate = useNavigate();
-  const { status } = useVendorStore();
+  const { fetchProfile } = useVendorStore();
+  const {
+    bookings,
+    fetchBookings,
+    loading: bookingsLoading,
+  } = useVendorBookingStore();
+  const {
+    availableBalance,
+    fetchEarnings,
+    loading: earningsLoading,
+  } = useVendorEarningsStore();
+  const {
+    summary,
+    fetchAnalytics,
+    loading: analyticsLoading,
+  } = useVendorAnalyticsStore();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isLoading] = useState(false);
 
   useEffect(() => {
-    // if (status === 'pending') {
-    //   navigate("/vendor/verification-pending");
-    // }
-  }, [status, navigate]);
+    const init = async () => {
+      try {
+        await Promise.all([
+          fetchProfile(),
+          fetchBookings(),
+          fetchEarnings(),
+          fetchAnalytics("month"),
+        ]);
+      } catch (error) {
+        toast.error("Failed to load dashboard data");
+      }
+    };
+    init();
+  }, []);
+
+  const recentBookings = useMemo(() => bookings.slice(0, 3), [bookings]);
+  const todaySchedule = useMemo(
+    () => bookings.filter((b) => isToday(new Date(b.date))).slice(0, 3),
+    [bookings]
+  );
+
+  const statsCards = useMemo(
+    () => [
+      {
+        title: "Available Balance",
+        value: `₹${availableBalance.toLocaleString()}`,
+        change: summary
+          ? `${summary.revenue.change >= 0 ? "+" : ""
+          }${summary.revenue.change.toFixed(1)}%`
+          : "0%",
+        icon: IndianRupee,
+        trend: !summary || summary.revenue.change >= 0 ? "up" : "down",
+      },
+      {
+        title: "Total Bookings",
+        value: summary
+          ? summary.bookings.current.toString()
+          : bookings.length.toString(),
+        change: summary
+          ? `${summary.bookings.change >= 0 ? "+" : ""
+          }${summary.bookings.change.toFixed(1)}%`
+          : "0%",
+        icon: Calendar,
+        trend: !summary || summary.bookings.change >= 0 ? "up" : "down",
+      },
+      {
+        title: "Active Customers",
+        value: summary ? summary.customers.current.toString() : "0",
+        change: summary
+          ? `${summary.customers.change >= 0 ? "+" : ""
+          }${summary.customers.change.toFixed(1)}%`
+          : "0%",
+        icon: Users,
+        trend: !summary || summary.customers.change >= 0 ? "up" : "down",
+      },
+      {
+        title: "Growth Rate",
+        value: summary ? `${summary.revenue.change.toFixed(1)}%` : "0%",
+        change: summary
+          ? `${summary.revenue.change >= 0 ? "+" : ""
+          }${summary.revenue.change.toFixed(1)}%`
+          : "0%",
+        icon: TrendingUp,
+        trend: !summary || summary.revenue.change >= 0 ? "up" : "down",
+      },
+    ],
+    [availableBalance, bookings, summary]
+  );
+
+  const isLoading = bookingsLoading || earningsLoading || analyticsLoading;
 
   useEffect(() => {
     if (searchQuery.length > 0) {
@@ -295,9 +290,9 @@ export function VendorHome() {
               className="space-y-3">
               {recentBookings.map((booking) => (
                 <motion.div
-                  key={booking.id}
+                  key={booking._id}
                   variants={staggerItem}
-                  onClick={() => navigate(`/vendor/bookings/${booking.id}`)}
+                  onClick={() => navigate(`/vendor/bookings/${booking._id}`)}
                   className="bg-card border border-border rounded-xl p-4 space-y-3 hover:border-primary/50 hover:-translate-y-0.5 transition-all cursor-pointer touch-manipulation active:scale-[0.98] shadow-sm hover:shadow-md">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -305,7 +300,7 @@ export function VendorHome() {
                         {booking.customerName}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {booking.service}
+                        {booking.serviceName}
                       </p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
@@ -325,7 +320,7 @@ export function VendorHome() {
                       <motion.span
                         className={cn(
                           "inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                          booking.status === "confirmed"
+                          booking.status === "confirmed" || booking.status === "upcoming"
                             ? "bg-green-400/20 text-green-400"
                             : "bg-yellow-400/20 text-yellow-400"
                         )}
@@ -373,7 +368,7 @@ export function VendorHome() {
 
                 return (
                   <motion.div
-                    key={appointment.id}
+                    key={appointment._id}
                     variants={staggerItem}
                     className={cn(
                       "bg-card border rounded-xl p-4 space-y-3 transition-all cursor-pointer touch-manipulation active:scale-[0.98] shadow-sm hover:shadow-md",
@@ -395,7 +390,7 @@ export function VendorHome() {
                             {appointment.customerName}
                           </h3>
                           <p className="text-xs text-muted-foreground truncate">
-                            {appointment.service}
+                            {appointment.serviceName}
                           </p>
                         </div>
                       </div>
@@ -417,7 +412,7 @@ export function VendorHome() {
                       <motion.span
                         className={cn(
                           "ml-auto px-2 py-0.5 rounded-full font-medium",
-                          appointment.status === "confirmed"
+                          appointment.status === "confirmed" || appointment.status === "upcoming"
                             ? "bg-green-400/20 text-green-400"
                             : "bg-yellow-400/20 text-yellow-400"
                         )}>

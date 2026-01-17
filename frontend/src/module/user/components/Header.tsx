@@ -6,37 +6,42 @@ import { ChevronDown, ShoppingCart, Bell } from "lucide-react"
 import { useUserStore } from "../store/useUserStore"
 import { Button } from "@/components/ui/button"
 import { LocationDialog } from "./LocationDialog"
+import { NotificationModal } from "./NotificationModal"
 import logo from "@/assets/logo.png"
 
 export function Header() {
-  const { location, cartCount, notificationsCount } = useUserStore()
+  const { location, cartCount, notificationsCount, fetchNotifications } = useUserStore()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10)
     window.addEventListener("scroll", onScroll, { passive: true })
+
+    // Fetch notifications on mount
+    fetchNotifications();
+
     return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  }, [fetchNotifications])
 
   return (
     <>
       <header
-        className={`sticky top-[env(safe-area-inset-top)] md:top-16 z-40 transition-colors duration-300  ${
-          isScrolled ? "bg-background border-b border-border/50" : "md:bg-transparent bg-background"
-        }`}
+        className={`sticky top-[env(safe-area-inset-top)] md:top-16 z-40 transition-colors duration-300  ${isScrolled ? "bg-background border-b border-border/50" : "md:bg-transparent bg-background"
+          }`}
       >
         <div className="w-full">
           <div className="w-full px-4 sm:px-5 md:px-6 py-2.5 sm:py-3">
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 w-full">
               {/* Left - Logo & Location */}
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <img 
-                    src={logo} 
-                    alt="Logo"     
-                    className="w-8 h-8 md:w-14 md:h-14 object-contain"
-                  />
+                <img
+                  src={logo}
+                  alt="Logo"
+                  className="w-8 h-8 md:w-14 md:h-14 object-contain"
+                />
 
                 <div className="flex flex-col min-w-0">
                   <Button
@@ -74,6 +79,7 @@ export function Header() {
                   variant="ghost"
                   className="relative h-10 w-10 sm:h-10 sm:w-10 md:h-11 md:w-11 hover:opacity-90 text-foreground/80 hover:text-yellow-400"
                   aria-label="Open notifications"
+                  onClick={() => setIsNotificationOpen(true)}
                 >
                   <Bell className="size-5 sm:size-6" />
                   {notificationsCount > 0 && (
@@ -97,9 +103,14 @@ export function Header() {
         </div>
       </header>
 
-      <LocationDialog 
-        open={isLocationDialogOpen} 
-        onOpenChange={setIsLocationDialogOpen} 
+      <LocationDialog
+        open={isLocationDialogOpen}
+        onOpenChange={setIsLocationDialogOpen}
+      />
+
+      <NotificationModal
+        open={isNotificationOpen}
+        onOpenChange={setIsNotificationOpen}
       />
     </>
   )

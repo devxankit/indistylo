@@ -36,7 +36,7 @@ export function ReviewReplyModal({
       return;
     }
 
-    onSave(review.id, response.trim());
+    onSave(review._id, response.trim());
     onOpenChange(false);
   };
 
@@ -58,7 +58,7 @@ export function ReviewReplyModal({
           <div className="bg-card border border-border rounded-lg p-3 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-foreground">
-                {review.customerName}
+                {review.user.name}
               </p>
               <div className="flex items-center gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (

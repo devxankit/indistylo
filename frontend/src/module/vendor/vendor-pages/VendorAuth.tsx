@@ -9,12 +9,15 @@ import {
   LogIn,
   UserPlus,
   ArrowLeft,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useVendorStore } from "../store/useVendorStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
+import { toast } from "sonner";
+import { LocationPicker } from "../vendor-components/LocationPicker";
 
 type VendorType = "salon" | "freelancer" | "spa" | null;
 type AuthMode = "login" | "signup" | null;
@@ -23,7 +26,8 @@ type AuthStep =
   | "type-selection"
   | "phone-input"
   | "otp-verification"
-  | "onboarding";
+  | "onboarding"
+  | "pending-approval";
 
 interface OnboardingFormData {
   businessName: string;
@@ -38,6 +42,7 @@ interface OnboardingFormData {
   experience?: string;
   specialization?: string;
   services?: string[];
+  geo?: { lat: number; lng: number };
 }
 
 // Progress indicator component
@@ -80,10 +85,20 @@ export function VendorAuth() {
     setAuthenticated,
     setProfile,
     setStatus,
+    sendOtp,
+    verifyOtp,
+    updateProfile,
+    uploadFile,
+    loading,
+    error,
   } = useVendorStore();
   const [step, setStep] = useState<AuthStep>("auth-mode");
+
+  const [aadharFront, setAadharFront] = useState<File | null>(null);
+  const [aadharBack, setAadharBack] = useState<File | null>(null);
+  const [gstCertificate, setGstCertificate] = useState<File | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>(null);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", ""]);
   const [otpError, setOtpError] = useState(false);
   const [formData, setFormData] = useState<OnboardingFormData>({
     businessName: "",
@@ -98,13 +113,19 @@ export function VendorAuth() {
     experience: "",
     specialization: "",
     services: [],
+    geo: undefined,
   });
 
-  const handlePhoneSubmit = (e: React.FormEvent) => {
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (phoneNumber.length === 10) {
-      // Simulate OTP sending
-      setStep("otp-verification");
+      const success = await sendOtp(phoneNumber);
+      if (success) {
+        setStep("otp-verification");
+        toast.success("OTP sent successfully");
+      } else {
+        toast.error(error || "Failed to send OTP");
+      }
     }
   };
 
@@ -115,7 +136,7 @@ export function VendorAuth() {
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (value && index < 5) {
+    if (value && index < 3) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       nextInput?.focus();
     }
@@ -131,32 +152,40 @@ export function VendorAuth() {
     }
   };
 
-  const handleOtpVerify = useCallback(() => {
+  const handleOtpVerify = useCallback(async () => {
     const otpValue = otp.join("");
-    if (otpValue.length === 6) {
-      // Simulate OTP verification
-      setOtpError(false);
-      if (authMode === "login") {
-        // For login, authenticate and navigate directly
-        // For login, authenticate and navigate based on status
-        setAuthenticated(true);
-        // Default to active for existing users effectively, but check status if available
-        // In a real app we'd fetch the user profile here which includes status
-        // For now we check the store state
-        if (useVendorStore.getState().status === 'pending') {
-          // navigate("/vendor/verification-pending");
-          navigate("/vendor/home");
+    if (otpValue.length === 4) {
+      try {
+        const success = await verifyOtp(phoneNumber, otpValue);
+        if (success) {
+          setOtpError(false);
+          if (authMode === "login") {
+            navigate("/vendor/home");
+            toast.success("Logged in successfully");
+          } else {
+            setStep("onboarding");
+          }
         } else {
-          navigate("/vendor/home");
+          setOtpError(true);
+          // @ts-ignore
+          if (useVendorStore.getState().error?.includes("pending approval")) {
+            setStep("pending-approval");
+          } else {
+            toast.error(error || "Invalid OTP");
+          }
         }
-      } else {
-        // For signup, proceed to onboarding
-        setStep("onboarding");
+      } catch (err: any) {
+        setOtpError(true);
+        if (err.message.includes("pending approval") || (err.response && err.response.status === 403 && err.response.data?.message?.includes("Account pending approval"))) {
+          setStep("pending-approval");
+        } else {
+          toast.error(error || "Invalid OTP");
+        }
       }
     } else {
       setOtpError(true);
     }
-  }, [otp, authMode, setAuthenticated, navigate]);
+  }, [otp, authMode, verifyOtp, phoneNumber, navigate, error]);
 
   const handleFormChange = (
     field: keyof OnboardingFormData,
@@ -165,26 +194,53 @@ export function VendorAuth() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleOnboardingSubmit = (e: React.FormEvent) => {
+  const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Save profile to store
-    setProfile({
-      businessName: formData.businessName,
-      ownerName: formData.ownerName,
-      email: formData.email,
-      address: formData.address,
-      city: formData.city,
-      state: formData.state,
-      pincode: formData.pincode,
-      gstNumber: formData.gstNumber,
-      aadharNumber: formData.aadharNumber,
-      experience: formData.experience,
-      specialization: formData.specialization,
-    });
-    setStatus('pending'); // New signups are pending
-    setAuthenticated(true);
-    // navigate("/vendor/verification-pending");
-    navigate("/vendor/home");
+    try {
+      // 1. Upload documents
+      const docs: any[] = [];
+
+      if (aadharFront) {
+        const url = await uploadFile(aadharFront);
+        if (url) docs.push({ type: "aadhar_front", url, status: "pending" });
+      }
+
+      if (aadharBack) {
+        const url = await uploadFile(aadharBack);
+        if (url) docs.push({ type: "aadhar_back", url, status: "pending" });
+      }
+
+      if (gstCertificate) {
+        const url = await uploadFile(gstCertificate);
+        if (url) docs.push({ type: "gst_certificate", url, status: "pending" });
+      }
+
+      // 2. Submit profile with docs
+      await updateProfile({
+        businessName: formData.businessName,
+        ownerName: formData.ownerName,
+        description: "",
+        address: formData.address,
+        email: formData.email, // Note: Store might not have businessEmail, check if it maps to email
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        category: "",
+        gender: "" as any,
+        gstNumber: formData.gstNumber,
+        aadharNumber: formData.aadharNumber,
+        experience: formData.experience,
+        specialization: formData.specialization,
+        verificationDocuments: docs.length > 0 ? docs : undefined,
+        geo: formData.geo ? { type: "Point", coordinates: [formData.geo.lng, formData.geo.lat] } : undefined,
+      });
+      // Navigate to verification pending page
+      navigate("/vendor/verification-pending");
+      toast.success("Profile created successfully");
+    } catch (error) {
+      console.error("Onboarding failed:", error);
+      toast.error("Failed to create profile");
+    }
   };
 
   const vendorTypeOptions = [
@@ -592,7 +648,7 @@ export function VendorAuth() {
                   animate={{ opacity: 1 }}
                   transition={{ ...transitions.smooth, delay: 0.2 }}
                   className="text-muted-foreground text-sm">
-                  Enter the 6-digit code sent to <br />
+                  Enter the 4-digit code sent to <br />
                   <span className="font-medium text-foreground">
                     +91 {phoneNumber}
                   </span>
@@ -644,7 +700,7 @@ export function VendorAuth() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     className="text-sm text-red-400 text-center">
-                    Please enter all 6 digits
+                    Please enter all 4 digits
                   </motion.p>
                 )}
 
@@ -698,6 +754,22 @@ export function VendorAuth() {
                 initial="hidden"
                 animate="visible"
                 className="space-y-5">
+
+                {/* Location Picker */}
+                <motion.div variants={staggerItem} className="space-y-3">
+                  <label className="block text-sm font-medium text-foreground">
+                    Pin Your Location (Move map to adjust)
+                  </label>
+                  <LocationPicker
+                    onLocationSelect={(loc) => setFormData(prev => ({ ...prev, geo: loc }))}
+                  />
+                  {formData.geo && (
+                    <p className="text-xs text-green-500">
+                      Location pinned: {formData.geo.lat.toFixed(4)}, {formData.geo.lng.toFixed(4)}
+                    </p>
+                  )}
+                </motion.div>
+
                 {/* Business/Owner Name */}
                 <motion.div variants={staggerItem}>
                   <label className="block text-sm font-medium text-foreground mb-3">
@@ -842,48 +914,87 @@ export function VendorAuth() {
 
                 {/* GST Number (for salon and spa) */}
                 {vendorType !== "freelancer" && (
-                  <motion.div variants={staggerItem}>
-                    <label className="block text-sm font-medium text-foreground mb-3">
-                      GST Number (Optional)
-                    </label>
-                    <motion.input
-                      type="text"
-                      value={formData.gstNumber}
-                      onChange={(e) =>
-                        handleFormChange("gstNumber", e.target.value)
-                      }
-                      className="w-full h-14 min-h-[44px] px-4 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted-foreground text-base touch-manipulation"
-                      placeholder="Enter GST number if available"
-                      whileFocus={{ scale: 1.02 }}
-                      transition={transitions.quick}
-                    />
-                  </motion.div>
+                  <>
+                    <motion.div variants={staggerItem}>
+                      <label className="block text-sm font-medium text-foreground mb-3">
+                        GST Number (Optional)
+                      </label>
+                      <motion.input
+                        type="text"
+                        value={formData.gstNumber}
+                        onChange={(e) =>
+                          handleFormChange("gstNumber", e.target.value)
+                        }
+                        className="w-full h-14 min-h-[44px] px-4 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted-foreground text-base touch-manipulation"
+                        placeholder="Enter GST number if available"
+                        whileFocus={{ scale: 1.02 }}
+                        transition={transitions.quick}
+                      />
+                    </motion.div>
+
+                    <motion.div variants={staggerItem}>
+                      <label className="block text-sm font-medium text-foreground mb-3">
+                        GST Certificate (Optional)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => e.target.files && setGstCertificate(e.target.files[0])}
+                        className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                      />
+                    </motion.div>
+                  </>
                 )}
 
-                {/* Aadhar Number (for freelancer) */}
-                {vendorType === "freelancer" && (
+                {/* Aadhar Number (All Vendors) */}
+                <motion.div variants={staggerItem}>
+                  <label className="block text-sm font-medium text-foreground mb-3">
+                    Aadhar Number *
+                  </label>
+                  <motion.input
+                    type="text"
+                    value={formData.aadharNumber}
+                    onChange={(e) => {
+                      const value = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 12);
+                      handleFormChange("aadharNumber", value);
+                    }}
+                    required
+                    maxLength={12}
+                    className="w-full h-14 min-h-[44px] px-4 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted-foreground text-base touch-manipulation"
+                    placeholder="Enter 12-digit Aadhar number"
+                    whileFocus={{ scale: 1.02 }}
+                    transition={transitions.quick}
+                  />
+                </motion.div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <motion.div variants={staggerItem}>
                     <label className="block text-sm font-medium text-foreground mb-3">
-                      Aadhar Number *
+                      Aadhar Card Front *
                     </label>
-                    <motion.input
-                      type="text"
-                      value={formData.aadharNumber}
-                      onChange={(e) => {
-                        const value = e.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 12);
-                        handleFormChange("aadharNumber", value);
-                      }}
+                    <input
+                      type="file"
                       required
-                      maxLength={12}
-                      className="w-full h-14 min-h-[44px] px-4 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted-foreground text-base touch-manipulation"
-                      placeholder="Enter 12-digit Aadhar number"
-                      whileFocus={{ scale: 1.02 }}
-                      transition={transitions.quick}
+                      accept="image/*,.pdf"
+                      onChange={(e) => e.target.files && setAadharFront(e.target.files[0])}
+                      className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                     />
                   </motion.div>
-                )}
+                  <motion.div variants={staggerItem}>
+                    <label className="block text-sm font-medium text-foreground mb-3">
+                      Aadhar Card Back *
+                    </label>
+                    <input
+                      type="file"
+                      required
+                      accept="image/*,.pdf"
+                      onChange={(e) => e.target.files && setAadharBack(e.target.files[0])}
+                      className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                    />
+                  </motion.div>
+                </div>
 
                 {/* Experience (for freelancer) */}
                 {vendorType === "freelancer" && (
@@ -929,92 +1040,144 @@ export function VendorAuth() {
               </motion.div>
             </motion.form>
           )}
+
+          {step === "pending-approval" && (
+            <motion.div
+              key="pending-approval"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              className="text-center space-y-6">
+              <div className="w-20 h-20 bg-yellow-400/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Clock className="w-10 h-10 text-yellow-400" />
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-foreground">
+                  Application Under Review
+                </h2>
+                <p className="text-muted-foreground w-11/12 mx-auto">
+                  Your vendor application is currently pending approval from our admin team.
+                  We will notify you once your account is activated.
+                </p>
+              </div>
+
+              <div className="p-4 bg-muted/20 border border-border rounded-xl text-left space-y-3">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  <span className="text-sm">Profile Details Submitted</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  <span className="text-sm">Documents Uploaded</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin" />
+                  <span className="text-sm font-medium text-yellow-500">Awaiting Admin Verification</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setStep("phone-input");
+                  setPhoneNumber("");
+                  setOtp(["", "", "", ""]);
+                }}
+                className="w-full h-14 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-xl transition-all active:scale-[0.98]">
+                Back to Login
+              </button>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
       {/* Fixed Bottom Button for all steps */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-4 safe-area-bottom">
-        {step === "auth-mode" && (
-          <button
-            onClick={() => {
-              if (authMode === "login") {
-                setStep("phone-input");
-              } else if (authMode === "signup") {
-                setStep("type-selection");
-              }
-            }}
-            disabled={!authMode}
-            className={cn(
-              "w-full h-14 min-h-[44px] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation",
-              !authMode
-                ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
-                : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
-            )}>
-            Continue
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        )}
-        {step === "type-selection" && (
-          <button
-            onClick={() => vendorType && setStep("phone-input")}
-            disabled={!vendorType}
-            className={cn(
-              "w-full h-14 min-h-[44px] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation",
-              !vendorType
-                ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
-                : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
-            )}>
-            Continue
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        )}
-        {step === "phone-input" && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              if (phoneNumber.length === 10) {
-                handlePhoneSubmit(e as any);
-              }
-            }}
-            disabled={phoneNumber.length !== 10}
-            className={cn(
-              "w-full h-14 min-h-[44px] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation",
-              phoneNumber.length !== 10
-                ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
-                : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
-            )}>
-            {authMode === "login" ? "Login" : "Send OTP"}
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        )}
-        {step === "otp-verification" && (
-          <button
-            onClick={handleOtpVerify}
-            disabled={otp.join("").length !== 6}
-            className={cn(
-              "w-full h-14 min-h-[44px] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation",
-              otp.join("").length !== 6
-                ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
-                : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
-            )}>
-            {authMode === "login" ? "Login" : "Verify & Continue"}
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        )}
-        {step === "onboarding" && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              handleOnboardingSubmit(e as any);
-            }}
-            className="w-full h-14 min-h-[44px] bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation">
-            Complete Registration
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        )}
-      </div>
-    </div>
+      {
+        step !== "pending-approval" && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-4 safe-area-bottom">
+            {step === "auth-mode" && (
+              <button
+                onClick={() => {
+                  if (authMode === "login") {
+                    setStep("phone-input");
+                  } else if (authMode === "signup") {
+                    setStep("type-selection");
+                  }
+                }}
+                disabled={!authMode}
+                className={cn(
+                  "w-full h-14 min-h-[44px] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation",
+                  !authMode
+                    ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
+                    : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
+                )}>
+                Continue
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
+            {step === "type-selection" && (
+              <button
+                onClick={() => vendorType && setStep("phone-input")}
+                disabled={!vendorType}
+                className={cn(
+                  "w-full h-14 min-h-[44px] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation",
+                  !vendorType
+                    ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
+                    : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
+                )}>
+                Continue
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
+            {step === "phone-input" && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (phoneNumber.length === 10) {
+                    handlePhoneSubmit(e as any);
+                  }
+                }}
+                disabled={phoneNumber.length !== 10}
+                className={cn(
+                  "w-full h-14 min-h-[44px] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation",
+                  phoneNumber.length !== 10
+                    ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
+                    : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
+                )}>
+                {authMode === "login" ? "Login" : "Send OTP"}
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
+            {step === "otp-verification" && (
+              <button
+                onClick={handleOtpVerify}
+                disabled={otp.join("").length !== 4}
+                className={cn(
+                  "w-full h-14 min-h-[44px] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation",
+                  otp.join("").length !== 4
+                    ? "bg-transparent border-2 border-gray-600 text-gray-400 cursor-not-allowed opacity-50"
+                    : "bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98]"
+                )}>
+                {authMode === "login" ? "Login" : "Verify & Continue"}
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
+            {step === "onboarding" && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleOnboardingSubmit(e as any);
+                }}
+                className="w-full h-14 min-h-[44px] bg-yellow-400/10 border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/20 hover:border-yellow-500 hover:text-yellow-300 active:scale-[0.98] font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 touch-manipulation">
+                Complete Registration
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        )
+      }
+    </div >
   );
 }

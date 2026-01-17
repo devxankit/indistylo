@@ -1,12 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, addDays } from "date-fns";
 import { Clock, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSalonStore } from "../store/useSalonStore";
 
 interface SlotPickerProps {
   onSelect: (date: string, time: string) => void;
   selectedDate?: string;
   selectedTime?: string;
+  salonId?: string;
 }
 
 const TIME_SLOTS = [
@@ -28,7 +30,17 @@ export function SlotPicker({
   onSelect,
   selectedDate,
   selectedTime,
+  salonId,
 }: SlotPickerProps) {
+  const { fetchSchedule } = useSalonStore();
+  const [schedule, setSchedule] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (salonId) {
+      fetchSchedule(salonId).then((data) => setSchedule(data));
+    }
+  }, [salonId, fetchSchedule]);
+
   const dates = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(new Date(), i));
   }, []);
@@ -39,6 +51,13 @@ export function SlotPicker({
   const [localTime, setLocalTime] = useState(selectedTime || "");
 
   const handleDateSelect = (date: Date) => {
+    const dayOfWeek = date.getDay();
+    const daySchedule = schedule.find((s) => s.dayOfWeek === dayOfWeek);
+
+    if (salonId && (!daySchedule || !daySchedule.isWorking)) {
+      return; // Prevent selection of closed days
+    }
+
     const formattedDate = format(date, "yyyy-MM-dd");
     setLocalDate(formattedDate);
     if (localTime) {
@@ -61,22 +80,29 @@ export function SlotPicker({
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           {dates.map((date) => {
             const isSelected = localDate === format(date, "yyyy-MM-dd");
+            const dayOfWeek = date.getDay();
+            const daySchedule = schedule.find((s) => s.dayOfWeek === dayOfWeek);
+            const isClosed = salonId ? (!daySchedule || !daySchedule.isWorking) : false;
+
             return (
               <button
                 key={date.toISOString()}
                 onClick={() => handleDateSelect(date)}
+                disabled={isClosed}
                 className={cn(
                   "flex flex-col items-center justify-center min-w-[64px] h-20 rounded-2xl border transition-all",
                   isSelected
                     ? "bg-yellow-400 border-yellow-400 text-white shadow-lg shadow-yellow-400/20"
-                    : "bg-yellow-400 border-yellow-400 text-white/80 hover:bg-yellow-500"
+                    : isClosed
+                      ? "bg-muted text-muted-foreground border-transparent opacity-50 cursor-not-allowed"
+                      : "bg-background border-border text-foreground hover:border-yellow-400"
                 )}>
                 <span className="text-[10px] uppercase font-bold tracking-wider">
                   {format(date, "EEE")}
                 </span>
                 <span className="text-lg font-bold">{format(date, "dd")}</span>
                 <span className="text-[10px] font-medium">
-                  {format(date, "MMM")}
+                  {isClosed ? "Closed" : format(date, "MMM")}
                 </span>
               </button>
             );
@@ -102,7 +128,7 @@ export function SlotPicker({
                   "py-3 rounded-xl border text-sm font-medium transition-all",
                   isSelected
                     ? "bg-yellow-400 border-yellow-400 text-white shadow-md shadow-yellow-400/10"
-                    : "bg-yellow-400 border-yellow-400 text-white/80 hover:bg-yellow-500"
+                    : "bg-background border-border text-foreground hover:border-yellow-400"
                 )}>
                 {time}
               </button>

@@ -1,23 +1,40 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Layers } from "lucide-react";
-import { useContentStore } from "../store/useContentStore";
+import { useContentStore, type Category } from "../store/useContentStore";
 import { ImageUpload } from "@/module/vendor/vendor-components/ImageUpload";
 
 interface AddCategoryModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    category?: Category | null; // Optional category for editing
 }
 
-export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) {
+export function AddCategoryModal({ open, onOpenChange, category }: AddCategoryModalProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [categoryName, setCategoryName] = useState("");
     const [categoryImage, setCategoryImage] = useState<string | null>(null);
     const [subCategories, setSubCategories] = useState<string[]>([""]);
-    const { addCategory } = useContentStore();
+    const { addCategory, updateCategory } = useContentStore();
+
+    // Reset or populate form when modal opens or category changes
+    useEffect(() => {
+        if (open) {
+            if (category) {
+                setCategoryName(category.name);
+                setCategoryImage(category.image || null);
+                setSubCategories(category.subCategories.length > 0 ? category.subCategories : [""]);
+            } else {
+                // Reset for new category
+                setCategoryName("");
+                setCategoryImage(null);
+                setSubCategories([""]);
+            }
+        }
+    }, [open, category]);
 
     const addSubCategory = () => setSubCategories([...subCategories, ""]);
 
@@ -39,19 +56,33 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
             return;
         }
         setIsLoading(true);
-        setTimeout(() => {
-            addCategory({
-                name: categoryName,
-                image: categoryImage || "",
-                subCategories: subCategories.filter(s => s.trim() !== ""),
-            });
-            toast.success("Category created successfully");
-            setIsLoading(false);
-            onOpenChange(false);
-            setCategoryName("");
-            setCategoryImage(null);
-            setSubCategories([""]);
-        }, 1200);
+        setTimeout(async () => {
+            try {
+                const subCats = subCategories.filter(s => s.trim() !== "");
+                if (category) {
+                    // Update existing
+                    await updateCategory(category._id, {
+                        name: categoryName,
+                        image: categoryImage || "",
+                        subCategories: subCats,
+                    });
+                    toast.success("Category updated successfully");
+                } else {
+                    // Create new
+                    await addCategory({
+                        name: categoryName,
+                        image: categoryImage || "",
+                        subCategories: subCats,
+                    });
+                    toast.success("Category created successfully");
+                }
+                onOpenChange(false);
+            } catch (error) {
+                toast.error("Failed to save category");
+            } finally {
+                setIsLoading(false);
+            }
+        }, 1000); // reduced timeout slightly, added real async await inside
     };
 
     return (
@@ -63,9 +94,11 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
                             <Layers className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                            <DialogTitle className="text-xl font-bold">Add Service Category</DialogTitle>
+                            <DialogTitle className="text-xl font-bold">
+                                {category ? "Edit Service Category" : "Add Service Category"}
+                            </DialogTitle>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Create a new main category for services.
+                                {category ? "Update category details." : "Create a new main category for services."}
                             </p>
                         </div>
                     </div>
@@ -79,6 +112,7 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
                                 onChange={(val) => setCategoryImage(val as string)}
                                 label="Icon"
                                 maxSizeMB={2}
+                                uploadEndpoint="/admin/upload"
                             />
                         </div>
                     </div>
@@ -136,7 +170,7 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={handleSave} disabled={isLoading} className="!bg-primary !text-black hover:!bg-primary/90">
                         {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Create Category
+                        {category ? "Update Category" : "Create Category"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -5,14 +5,14 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 interface Booking {
-    id: string;
-    customer: string;
-    vendor: string;
-    amount: number;
+    _id: string;
+    user?: { name: string; phone?: string };
+    salon?: { name: string; location?: string };
+    service?: { name: string; price?: number };
+    price: number;
     status: string;
     date: string;
-    customerLocation?: string;
-    services?: string[];
+    address?: string;
 }
 
 interface InspectBookingModalProps {
@@ -30,12 +30,19 @@ export function InspectBookingModal({ booking, open, onOpenChange, onStatusUpdat
     const handleAction = (status: string) => {
         setIsLoading(true);
         setTimeout(() => {
-            onStatusUpdate(booking.id, status);
+            onStatusUpdate(booking._id, status);
             toast.success(`Order marked as ${status}`);
             setIsLoading(false);
             onOpenChange(false);
         }, 800);
     };
+
+    // Format date
+    const formattedDate = booking.date ? new Date(booking.date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    }) : 'N/A';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -45,15 +52,15 @@ export function InspectBookingModal({ booking, open, onOpenChange, onStatusUpdat
                         <div>
                             <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                 Booking Details
-                                <span className="text-muted-foreground font-normal text-base">#{booking.id}</span>
+                                <span className="text-muted-foreground font-normal text-base">#{booking._id.slice(-8).toUpperCase()}</span>
                             </DialogTitle>
                             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                                <Calendar className="w-3 h-3" /> {booking.date}
+                                <Calendar className="w-3 h-3" /> {formattedDate}
                             </p>
                         </div>
                         <span className={`capitalize px-3 py-1 rounded-full text-sm font-medium border
                             ${booking.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200' :
-                                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                                booking.status === 'pending' || booking.status === 'upcoming' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
                                     'bg-red-100 text-red-700 border-red-200'}`}>
                             {booking.status}
                         </span>
@@ -67,10 +74,10 @@ export function InspectBookingModal({ booking, open, onOpenChange, onStatusUpdat
                             <User className="w-4 h-4" /> Customer
                         </div>
                         <div>
-                            <p className="font-semibold text-lg">{booking.customer}</p>
+                            <p className="font-semibold text-lg">{booking.user?.name || "Unknown Customer"}</p>
                             <div className="flex items-start gap-2 mt-2 text-sm text-muted-foreground">
                                 <MapPin className="w-3.5 h-3.5 mt-0.5" />
-                                <span>{booking.customerLocation || "Sector 45, Gurgaon"}</span>
+                                <span>{booking.address || booking.salon?.location || "Location not specified"}</span>
                             </div>
                         </div>
                     </div>
@@ -81,10 +88,10 @@ export function InspectBookingModal({ booking, open, onOpenChange, onStatusUpdat
                             <Store className="w-4 h-4" /> Vendor
                         </div>
                         <div>
-                            <p className="font-semibold text-lg">{booking.vendor}</p>
+                            <p className="font-semibold text-lg">{booking.salon?.name || "Unknown Vendor"}</p>
                             <div className="flex items-start gap-2 mt-2 text-sm text-muted-foreground">
                                 <CreditCard className="w-3.5 h-3.5 mt-0.5" />
-                                <span>Total: <span className="text-foreground font-bold">₹{booking.amount}</span></span>
+                                <span>Total: <span className="text-foreground font-bold">₹{booking.price || 0}</span></span>
                             </div>
                         </div>
                     </div>
@@ -93,11 +100,13 @@ export function InspectBookingModal({ booking, open, onOpenChange, onStatusUpdat
                 <div className="my-2">
                     <p className="text-sm font-medium mb-2 text-muted-foreground">Services Booked</p>
                     <div className="flex flex-wrap gap-2">
-                        {['Haircut', 'Spa Treatment', 'Manicure'].map((s) => (
-                            <span key={s} className="px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium border border-border/50">
-                                {s}
+                        {booking.service ? (
+                            <span className="px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium border border-border/50">
+                                {booking.service.name}
                             </span>
-                        ))}
+                        ) : (
+                            <span className="text-sm text-muted-foreground">No service specified</span>
+                        )}
                     </div>
                 </div>
 
@@ -110,7 +119,7 @@ export function InspectBookingModal({ booking, open, onOpenChange, onStatusUpdat
                         Close
                     </Button>
 
-                    {booking.status === 'pending' && (
+                    {(booking.status === 'pending' || booking.status === 'upcoming') && (
                         <>
                             <Button
                                 variant="destructive"

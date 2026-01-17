@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useAdminStore } from "../store/useAdminStore";
 import {
@@ -7,7 +7,8 @@ import {
     Store,
     Building2,
     User,
-    Eye
+    Eye,
+    Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,10 +17,14 @@ import { cn } from "@/lib/utils";
 import { AddVendorModal } from "../components/AddVendorModal";
 
 export function VendorManagement() {
-    const { pendingVendors, activeVendors } = useAdminStore();
+    const { pendingVendors, activeVendors, fetchVendors, isLoading } = useAdminStore();
     const location = useLocation();
     const [searchTerm, setSearchTerm] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
+
+    useEffect(() => {
+        fetchVendors();
+    }, []);
 
     const isPendingView = location.pathname.includes("pending");
 
@@ -28,6 +33,14 @@ export function VendorManagement() {
             vendor.ownerName.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesSearch;
     });
+
+    if (isLoading && filteredVendors.length === 0) {
+        return (
+            <div className="h-[60vh] flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

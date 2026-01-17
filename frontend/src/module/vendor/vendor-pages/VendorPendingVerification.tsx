@@ -1,12 +1,31 @@
 import { motion } from "framer-motion";
 import { Clock, MessageSquare, ChevronRight, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { useVendorStore } from "../store/useVendorStore";
 import { transitions } from "@/lib/animations";
 
 export default function VendorPendingVerification() {
     const navigate = useNavigate();
-    const { reset } = useVendorStore();
+    const { reset, fetchProfile, status } = useVendorStore();
+
+    useEffect(() => {
+        // Initial check
+        fetchProfile();
+
+        // Poll every 5 seconds
+        const interval = setInterval(() => {
+            fetchProfile();
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [fetchProfile]);
+
+    useEffect(() => {
+        if (status === "active") {
+            navigate("/vendor/home");
+        }
+    }, [status, navigate]);
 
     const handleLogout = () => {
         reset();

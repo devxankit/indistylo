@@ -9,7 +9,8 @@ import {
     LogOut,
     Files,
     UserPlus,
-    X
+    X,
+    Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminStore } from "../store/useAdminStore";
@@ -30,6 +31,8 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         { icon: Users, label: "Users", path: "/admin/users" },
         { icon: CalendarCheck, label: "Bookings", path: "/admin/bookings" },
         { icon: IndianRupee, label: "Finance", path: "/admin/finance" },
+        { icon: Layers, label: "Salon Categories", path: "/admin/salon-categories" },
+        { icon: Layers, label: "Spa Categories", path: "/admin/spa-categories" },
         { icon: Files, label: "Content", path: "/admin/content" },
         { icon: Settings, label: "Settings", path: "/admin/settings" },
     ];

@@ -1,4 +1,4 @@
-import { Wallet, CreditCard, Banknote } from "lucide-react";
+import { CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type PaymentMethod = "salon" | "online" | "wallet";
@@ -10,22 +10,10 @@ interface PaymentMethodPickerProps {
 
 const METHODS = [
   {
-    id: "salon" as PaymentMethod,
-    title: "Pay at Salon",
-    description: "Pay after your service",
-    icon: Banknote,
-  },
-  {
     id: "online" as PaymentMethod,
     title: "Online Payment",
     description: "UPI, Cards, Netbanking",
     icon: CreditCard,
-  },
-  {
-    id: "wallet" as PaymentMethod,
-    title: "Indistylo Wallet",
-    description: "Fast & Secure",
-    icon: Wallet,
   },
 ];
 

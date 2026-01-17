@@ -23,7 +23,7 @@ interface AdminNotificationModalProps {
 }
 
 export function AdminNotificationModal({ open, onOpenChange }: AdminNotificationModalProps) {
-    const { notifications, markAsRead, markAllAsRead, clearNotifications } = useAdminStore();
+    const { notifications, markAsRead, markAllAsRead, clearNotifications, deleteNotification } = useAdminStore();
     const navigate = useNavigate();
 
     const getIcon = (type: AdminNotification['type']) => {
@@ -117,6 +117,18 @@ export function AdminNotificationModal({ open, onOpenChange }: AdminNotification
                                             {notification.message}
                                         </p>
                                     </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-2 top-2 h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteNotification(notification.id);
+                                        }}
+                                        title="Delete notification"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                    </Button>
                                     {!notification.read && (
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary" />
                                     )}

@@ -1,347 +1,282 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
+  Filter,
+  MoreVertical,
   Phone,
   Mail,
-  MapPin,
   Calendar,
   IndianRupee,
-  Star,
-  ArrowLeft,
-  User,
-  Users,
   ChevronRight,
+  TrendingUp,
+  Users,
+  Star,
+  User,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
-import { useCountUp } from "@/hooks/useCountUp";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCustomerStore, type Customer } from "../store/useCustomerStore";
+import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
-const getStatusColor = (status: Customer["status"]) => {
+const getStatusStyles = (status: Customer["status"]) => {
   switch (status) {
     case "vip":
-      return "bg-purple-400/20 text-purple-400 border-purple-400/30";
+      return "bg-amber-400/10 text-amber-400 border-amber-400/20";
     case "active":
-      return "bg-green-400/20 text-green-400 border-green-400/30";
+      return "bg-green-400/10 text-green-400 border-green-400/20";
     case "inactive":
-      return "bg-gray-400/20 text-gray-400 border-gray-400/30";
+      return "bg-zinc-400/10 text-zinc-400 border-zinc-400/20";
+    default:
+      return "bg-blue-400/10 text-blue-400 border-blue-400/20";
   }
 };
 
 export function VendorCustomers() {
   const navigate = useNavigate();
-  const { customers } = useCustomerStore();
+  const { customers, fetchCustomers, loading, error } = useCustomerStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<Customer["status"] | "all">("all");
-  const [sortBy, setSortBy] = useState<"name" | "bookings" | "spent" | "lastVisit">("name");
+  const [activeFilter, setActiveFilter] = useState<Customer["status"] | "all">("all");
+  const [sortBy, setSortBy] = useState<"name" | "bookings" | "spent" | "lastVisit">("lastVisit");
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const filteredCustomers = useMemo(() => {
-    let filtered = [...customers];
-    
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (customer) =>
-          customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          customer.phone.includes(searchQuery) ||
-          (customer.email && customer.email.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-    
-    // Apply status filter
-    if (filter !== "all") {
-      filtered = filtered.filter((customer) => customer.status === filter);
-    }
-    
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "name":
-          return a.name.localeCompare(b.name);
-        case "bookings":
-          return b.totalBookings - a.totalBookings;
-        case "spent":
-          return b.totalSpent - a.totalSpent;
-        case "lastVisit":
+    return customers
+      .filter((c) => {
+        const matchesSearch =
+          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.phone.includes(searchQuery) ||
+          c.email?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFilter = activeFilter === "all" || c.status === activeFilter;
+        return matchesSearch && matchesFilter;
+      })
+      .sort((a, b) => {
+        if (sortBy === "name") return a.name.localeCompare(b.name);
+        if (sortBy === "bookings") return b.totalBookings - a.totalBookings;
+        if (sortBy === "spent") return b.totalSpent - a.totalSpent;
+        if (sortBy === "lastVisit") {
+          if (!a.lastVisit) return 1;
+          if (!b.lastVisit) return -1;
           return new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime();
-        default:
-          return 0;
-      }
-    });
-    
-    return filtered;
-  }, [customers, searchQuery, filter, sortBy]);
+        }
+        return 0;
+      });
+  }, [customers, searchQuery, activeFilter, sortBy]);
 
-  const stats = useMemo(() => {
-    return {
-      total: customers.length,
-      active: customers.filter(c => c.status !== "inactive").length,
-      vip: customers.filter(c => c.status === "vip").length,
-      totalSpent: customers.reduce((sum, customer) => sum + customer.totalSpent, 0),
-    };
-  }, [customers]);
-
-  const animatedTotalSpent = useCountUp(stats.totalSpent, { duration: 1500 });
-
-  const handleSort = useCallback((field: typeof sortBy) => {
-    setSortBy(field);
-  }, []);
+  const stats = useMemo(() => ({
+    total: customers.length,
+    vip: customers.filter(c => c.status === 'vip').length,
+    active: customers.filter(c => c.status === 'active').length,
+    revenue: customers.reduce((acc, c) => acc + c.totalSpent, 0)
+  }), [customers]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24" style={{ paddingBottom: 'max(6rem, env(safe-area-inset-bottom))' }}>
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={transitions.smooth}
-        className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border"
-      >
-        <div className="px-4 py-3 flex items-center gap-3">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/vendor/profile')}
-            className="p-2 min-w-[44px] min-h-[44px] hover:bg-muted rounded-lg transition-colors touch-manipulation flex items-center justify-center"
-            aria-label="Go back"
+    <div className="min-h-screen bg-background pb-20">
+      {/* Header Section */}
+      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border px-4 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Customers</h1>
+            <p className="text-xs text-muted-foreground">Manage and track your clientele</p>
+          </div>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"
           >
-            <ArrowLeft className="w-5 h-5 text-foreground" />
-          </motion.button>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-foreground">Customers</h2>
-            <p className="text-xs text-muted-foreground">
-              Manage your customer relationships
-            </p>
-          </div>
+            <Users className="w-5 h-5" />
+          </motion.div>
         </div>
-      </motion.div>
 
-      <div className="px-4 py-6 space-y-6">
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...transitions.smooth, delay: 0.1 }}
-          className="grid grid-cols-2 gap-4"
-        >
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="w-5 h-5 text-primary" />
-              <p className="text-xs text-muted-foreground">Total Customers</p>
-            </div>
-            <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-          </div>
-          
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <IndianRupee className="w-5 h-5 text-primary" />
-              <p className="text-xs text-muted-foreground">Total Revenue</p>
-            </div>
-            <p className="text-2xl font-bold text-foreground">₹{animatedTotalSpent.toLocaleString()}</p>
-          </div>
-        </motion.div>
-
-        {/* Filters and Search */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...transitions.smooth, delay: 0.2 }}
-          className="space-y-4"
-        >
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+        {/* Search & Quick Filters */}
+        <div className="space-y-3">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <input
               type="text"
+              placeholder="Search by name, phone or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search customers..."
-              className="w-full h-12 pl-10 pr-4 rounded-xl bg-card border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-sm placeholder:text-muted-foreground"
+              className="w-full h-11 pl-10 pr-4 rounded-xl bg-card border border-border focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all text-sm"
             />
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap gap-2">
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setFilter("all")}
-              className={cn(
-                "px-3 py-2 rounded-lg text-xs font-medium transition-all min-h-[36px] touch-manipulation",
-                filter === "all"
-                  ? "bg-primary/10 text-primary border border-primary/30"
-                  : "bg-card text-muted-foreground border border-border hover:border-primary/50"
-              )}
-            >
-              All ({stats.total})
-            </motion.button>
-            
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setFilter("active")}
-              className={cn(
-                "px-3 py-2 rounded-lg text-xs font-medium transition-all min-h-[36px] touch-manipulation",
-                filter === "active"
-                  ? "bg-green-400/10 text-green-400 border border-green-400/30"
-                  : "bg-card text-muted-foreground border border-border hover:border-primary/50"
-              )}
-            >
-              Active ({stats.active})
-            </motion.button>
-            
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setFilter("vip")}
-              className={cn(
-                "px-3 py-2 rounded-lg text-xs font-medium transition-all min-h-[36px] touch-manipulation",
-                filter === "vip"
-                  ? "bg-purple-400/10 text-purple-400 border border-purple-400/30"
-                  : "bg-card text-muted-foreground border border-border hover:border-primary/50"
-              )}
-            >
-              VIP ({stats.vip})
-            </motion.button>
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {(["all", "vip", "active", "inactive"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setActiveFilter(f)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-all",
+                  activeFilter === f
+                    ? "bg-primary text-black border-primary"
+                    : "bg-card text-muted-foreground border-border hover:border-muted"
+                )}
+              >
+                {f.charAt(0)?.toUpperCase() + f.slice(1)}
+              </button>
+            ))}
           </div>
-        </motion.div>
+        </div>
+      </div>
 
-        {/* Sort Options */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...transitions.smooth, delay: 0.3 }}
-          className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide"
-        >
-          <span className="text-xs text-muted-foreground whitespace-nowrap">Sort by:</span>
+      <div className="px-4 py-6 space-y-6">
+        {/* Quick Stats Overview */}
+        <div className="grid grid-cols-2 gap-3">
           {[
-            { key: "name", label: "Name" },
-            { key: "bookings", label: "Bookings" },
-            { key: "spent", label: "Spent" },
-            { key: "lastVisit", label: "Last Visit" },
-          ].map((option) => (
-            <motion.button
-              key={option.key}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleSort(option.key as typeof sortBy)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all min-h-[32px] touch-manipulation",
-                sortBy === option.key
-                  ? "bg-primary/10 text-primary border border-primary/30"
-                  : "bg-card text-muted-foreground border border-border hover:border-primary/50"
-              )}
+            { label: 'Total Clients', value: stats.total, icon: Users, color: 'text-blue-400' },
+            { label: 'VIP Members', value: stats.vip, icon: Star, color: 'text-amber-400' },
+            { label: 'Total Revenue', value: `₹${stats.revenue.toLocaleString()}`, icon: TrendingUp, color: 'text-green-400' },
+            { label: 'Active Now', value: stats.active, icon: TrendingUp, color: 'text-emerald-400' },
+          ].map((stat, i) => (
+            <motion.div
+              hover={{ scale: 1.02 }}
+              key={i}
+              className="p-3 bg-card border border-border rounded-2xl space-y-2 shadow-sm"
             >
-              {option.label}
-            </motion.button>
+              <div className={cn("w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center", stat.color)}>
+                <stat.icon className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+                <p className="text-lg font-bold text-foreground">{stat.value}</p>
+              </div>
+            </motion.div>
           ))}
-        </motion.div>
+        </div>
+
+        {/* Error Handling */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-4 bg-red-400/10 border border-red-400/20 rounded-2xl text-red-400 text-sm flex items-center gap-3"
+          >
+            <span className="flex-1">{error}</span>
+            <button
+              onClick={() => navigate('/vendor/auth')}
+              className="px-4 py-1.5 bg-red-400 text-black rounded-lg font-bold text-xs"
+            >
+              RELINK ACCOUNT
+            </button>
+          </motion.div>
+        )}
 
         {/* Customer List */}
-        {filteredCustomers.length > 0 ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
+              {filteredCustomers.length} results
+            </h2>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent text-xs text-primary font-medium focus:outline-none cursor-pointer"
+            >
+              <option value="lastVisit">Recent Visit</option>
+              <option value="spent">High Value</option>
+              <option value="bookings">Most Bookings</option>
+              <option value="name">Alphabetical</option>
+            </select>
+          </div>
+
           <motion.div
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
             className="space-y-3"
           >
-            {filteredCustomers.map((customer) => (
+            <AnimatePresence mode="popLayout">
+              {filteredCustomers.map((customer) => (
+                <motion.div
+                  key={customer.id || customer._id}
+                  layout
+                  variants={staggerItem}
+                  transition={transitions.smooth}
+                  className="group relative bg-card border border-border rounded-2xl p-4 overflow-hidden hover:border-primary/40 active:scale-[0.98] transition-all shadow-sm"
+                  onClick={() => navigate(`/vendor/customers/${customer.id || customer._id}`)}
+                >
+                  {/* Glass background effect on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                  <div className="relative flex items-center gap-4">
+                    {/* Avatar with Status Ring */}
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-xl font-bold text-primary border border-white/5">
+                        {customer.name?.charAt(0) || "C"}
+                      </div>
+                      <div className={cn(
+                        "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-card",
+                        customer.status === 'vip' ? 'bg-amber-400' :
+                          customer.status === 'active' ? 'bg-green-400' : 'bg-zinc-400'
+                      )} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h3 className="text-base font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                          {customer.name}
+                        </h3>
+                        <div className={cn(
+                          "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border",
+                          getStatusStyles(customer.status)
+                        )}>
+                          {customer.status}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground whitespace-nowrap overflow-hidden">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <IndianRupee className="w-3.5 h-3.5 shrink-0" />
+                          <span className="font-medium text-foreground">₹{customer.totalSpent.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 shrink-0" />
+                          <span>{customer.lastVisit ? format(new Date(customer.lastVisit), "MMM dd") : "Never"}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Star className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                          <span>{customer.totalBookings}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all shrink-0" />
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {!loading && filteredCustomers.length === 0 && (
               <motion.div
-                key={customer.id}
-                variants={staggerItem}
-                className="bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-all cursor-pointer touch-manipulation active:scale-[0.98] shadow-sm hover:shadow-md"
-                onClick={() => navigate(`/vendor/customers/${customer.id}`)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-20 text-center"
               >
-                <div className="flex items-start gap-3">
-                  {/* Avatar */}
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-lg font-semibold min-w-[48px] min-h-[48px]">
-                    {customer.name.charAt(0)}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    {/* Customer Info */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-foreground text-sm truncate">
-                            {customer.name}
-                          </h3>
-                          {customer.rating && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                              <span className="text-xs font-medium text-foreground">
-                                {customer.rating}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <motion.span
-                          className={cn(
-                            "text-xs font-medium px-2 py-0.5 rounded-full",
-                            getStatusColor(customer.status)
-                          )}
-                        >
-                          {customer.status.charAt(0).toUpperCase() + customer.status.slice(1)}
-                        </motion.span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-                    </div>
-                    
-                    {/* Contact Info */}
-                    <div className="space-y-1.5 mb-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Phone className="w-3.5 h-3.5" />
-                        <span className="truncate">{customer.phone}</span>
-                      </div>
-                      
-                      {customer.email && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Mail className="w-3.5 h-3.5" />
-                          <span className="truncate">{customer.email}</span>
-                        </div>
-                      )}
-                      
-                      {customer.address && (
-                        <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                          <MapPin className="w-3.5 h-3.5 mt-0.5" />
-                          <span className="truncate">{customer.address}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 text-xs">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-primary" />
-                        <span className="font-medium text-foreground">{customer.totalBookings}</span>
-                        <span className="text-muted-foreground">bookings</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-1">
-                        <IndianRupee className="w-3.5 h-3.5 text-primary" />
-                        <span className="font-medium text-foreground">{customer.totalSpent.toLocaleString()}</span>
-                        <span className="text-muted-foreground">spent</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center mb-4">
+                  <Search className="w-8 h-8 text-muted-foreground opacity-20" />
                 </div>
+                <h3 className="text-lg font-bold text-foreground">No customers found</h3>
+                <p className="text-sm text-muted-foreground px-10">
+                  Try adjusting your search or filters to find what you're looking for.
+                </p>
               </motion.div>
-            ))}
+            )}
           </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={transitions.smooth}
-            className="text-center py-12 bg-card border border-border rounded-xl"
-          >
-            <User className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground text-sm">
-              {searchQuery || filter !== "all" 
-                ? "No customers found matching your criteria" 
-                : "No customers yet"}
-            </p>
-          </motion.div>
-        )}
+        </div>
       </div>
+
+      {loading && customers.length === 0 && (
+        <div className="px-4 space-y-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-24 w-full bg-card/50 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

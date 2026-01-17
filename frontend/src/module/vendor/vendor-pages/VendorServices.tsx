@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useCallback } from "react";
+import { useState, useMemo, memo, useCallback, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -18,10 +18,11 @@ import { staggerContainer, staggerItem, transitions } from "@/lib/animations";
 import { useTouchFeedback } from "@/lib/touch";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { useServiceStore, type Service } from "../store/useServiceStore";
+import { useVendorStore } from "../store/useVendorStore";
 import { ServiceFormModal } from "../vendor-components/ServiceFormModal";
 import { DeleteConfirmDialog } from "../vendor-components/DeleteConfirmDialog";
 
-const categories = ["All", "Hair", "Skin", "Nails", "Grooming"];
+
 
 // Service Card Component
 const ServiceCard = memo(
@@ -39,7 +40,8 @@ const ServiceCard = memo(
     onDelete: (id: string) => void;
   }) => {
     const { isActive: isTouchActive, ...touchHandlers } = useTouchFeedback();
-    const hasPricingTiers = service.pricingTiers && service.pricingTiers.length > 0;
+    const hasPricingTiers =
+      service.pricingTiers && service.pricingTiers.length > 0;
     const minPrice = hasPricingTiers
       ? Math.min(...service.pricingTiers!.map((t) => t.price))
       : service.price;
@@ -95,7 +97,7 @@ const ServiceCard = memo(
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => onToggleActive(service.id)}
+                  onClick={() => onToggleActive(service._id)}
                   className={cn(
                     "p-2 min-w-[40px] min-h-[40px] rounded-lg transition-colors touch-manipulation flex items-center justify-center shrink-0",
                     service.isActive
@@ -120,11 +122,9 @@ const ServiceCard = memo(
                   <IndianRupee className="w-3 h-3" />
                   {hasPricingTiers ? (
                     <span>
-                      {minPrice === maxPrice ? (
-                        minPrice
-                      ) : (
-                        `${minPrice} - ${maxPrice}`
-                      )}
+                      {minPrice === maxPrice
+                        ? minPrice
+                        : `${minPrice} - ${maxPrice}`}
                     </span>
                   ) : (
                     service.price
@@ -177,7 +177,7 @@ const ServiceCard = memo(
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => onDelete(service.id)}
+                  onClick={() => onDelete(service._id)}
                   className="px-3 py-2 bg-red-400/10 text-red-400 border border-red-400/30 rounded-lg hover:bg-red-400/20 transition-colors min-h-[40px] min-w-[40px] touch-manipulation flex items-center justify-center"
                   aria-label="Delete">
                   <Trash2 className="w-3.5 h-3.5" />
@@ -229,7 +229,7 @@ const ServiceCard = memo(
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => onToggleActive(service.id)}
+            onClick={() => onToggleActive(service._id)}
             className={cn(
               "p-1.5 min-w-[36px] min-h-[36px] rounded-lg transition-colors touch-manipulation flex items-center justify-center shrink-0",
               service.isActive
@@ -255,11 +255,9 @@ const ServiceCard = memo(
               <IndianRupee className="w-3 h-3" />
               {hasPricingTiers ? (
                 <span>
-                  {minPrice === maxPrice ? (
-                    minPrice
-                  ) : (
-                    `${minPrice} - ${maxPrice}`
-                  )}
+                  {minPrice === maxPrice
+                    ? minPrice
+                    : `${minPrice} - ${maxPrice}`}
                 </span>
               ) : (
                 service.price
@@ -311,7 +309,7 @@ const ServiceCard = memo(
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onDelete(service.id)}
+            onClick={() => onDelete(service._id)}
             className="px-2 py-2 bg-red-400/10 text-red-400 border border-red-400/30 rounded-lg hover:bg-red-400/20 transition-colors min-h-[36px] min-w-[36px] touch-manipulation flex items-center justify-center"
             aria-label="Delete">
             <Trash2 className="w-3 h-3" />
@@ -327,20 +325,34 @@ ServiceCard.displayName = "ServiceCard";
 export function VendorServices() {
   const {
     services,
+    fetchServices,
+    fetchCategories, // Added this
+    categoryTree, // Use categoryTree instead of categories
     addService,
     updateService,
     deleteService,
     toggleActive,
+    loading: isLoading,
   } = useServiceStore();
+
+  const { vendorType } = useVendorStore();
+  const isSpaOwner = vendorType === "spa";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [isLoading] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+
+  useEffect(() => {
+    fetchServices();
+    const type = isSpaOwner ? "SPA" : "SALON";
+    fetchCategories("MALE", type); // Refresh categories for filter
+  }, [isSpaOwner, fetchServices, fetchCategories]);
+
+  const categories = useMemo(() => ["All", ...categoryTree.map(c => c.headerName)], [categoryTree]);
 
   const filteredServices = useMemo(() => {
     return services.filter((service) => {
@@ -348,9 +360,10 @@ export function VendorServices() {
         searchQuery === "" ||
         service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (service.tags && service.tags.some((tag) =>
-          tag.toLowerCase().includes(searchQuery.toLowerCase())
-        ));
+        (service.tags &&
+          service.tags.some((tag) =>
+            tag.toLowerCase().includes(searchQuery.toLowerCase())
+          ));
       const matchesCategory =
         selectedCategory === "All" || service.category === selectedCategory;
       return matchesSearch && matchesCategory;
@@ -364,25 +377,25 @@ export function VendorServices() {
     [toggleActive]
   );
 
-  const handleEdit = useCallback(
-    (service: Service) => {
-      setSelectedService(service);
-      setIsFormModalOpen(true);
-    },
-    []
-  );
+  const handleEdit = useCallback((service: Service) => {
+    setSelectedService(service);
+    setIsFormModalOpen(true);
+  }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    const service = services.find((s) => s.id === id);
-    if (service) {
-      setServiceToDelete(service);
-      setIsDeleteDialogOpen(true);
-    }
-  }, [services]);
+  const handleDelete = useCallback(
+    (id: string) => {
+      const service = services.find((s) => s._id === id);
+      if (service) {
+        setServiceToDelete(service);
+        setIsDeleteDialogOpen(true);
+      }
+    },
+    [services]
+  );
 
   const handleConfirmDelete = useCallback(() => {
     if (serviceToDelete) {
-      deleteService(serviceToDelete.id);
+      deleteService(serviceToDelete._id);
       setServiceToDelete(null);
     }
   }, [serviceToDelete, deleteService]);
@@ -393,9 +406,9 @@ export function VendorServices() {
   };
 
   const handleSaveService = useCallback(
-    (serviceData: Omit<Service, "id">) => {
+    (serviceData: Omit<Service, "_id">) => {
       if (selectedService) {
-        updateService(selectedService.id, serviceData);
+        updateService(selectedService._id, serviceData);
       } else {
         addService(serviceData);
       }
@@ -434,27 +447,35 @@ export function VendorServices() {
           <div className="flex items-center gap-2">
             <motion.button
               whileTap={{ scale: 0.95 }}
+              onClick={handleAddService}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-yellow-500 text-white rounded-lg font-medium shadow-sm hover:bg-yellow-400 transition-all min-h-[44px] touch-manipulation"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-sm">Create Service</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={() => setViewMode("grid")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg transition-all min-h-[44px] touch-manipulation",
+                "flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg transition-all min-h-[44px] touch-manipulation",
                 viewMode === "grid"
                   ? "bg-primary/10 text-primary border border-primary/30"
                   : "bg-card text-muted-foreground border border-border hover:border-primary/50"
               )}>
               <Grid3x3 className="w-4 h-4" />
-              <span className="text-sm font-medium">Grid</span>
+              <span className="sr-only sm:not-sr-only text-sm font-medium">Grid</span>
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setViewMode("list")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg transition-all min-h-[44px] touch-manipulation",
+                "flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg transition-all min-h-[44px] touch-manipulation",
                 viewMode === "list"
                   ? "bg-primary/10 text-primary border border-primary/30"
                   : "bg-card text-muted-foreground border border-border hover:border-primary/50"
               )}>
               <List className="w-4 h-4" />
-              <span className="text-sm font-medium">List</span>
+              <span className="sr-only sm:not-sr-only text-sm font-medium">List</span>
             </motion.button>
           </div>
         </div>
@@ -535,7 +556,7 @@ export function VendorServices() {
             )}>
             {filteredServices.map((service) => (
               <ServiceCard
-                key={service.id}
+                key={service._id}
                 service={service}
                 viewMode={viewMode}
                 onEdit={handleEdit}
@@ -551,7 +572,15 @@ export function VendorServices() {
             transition={transitions.smooth}
             className="text-center py-12 bg-card border border-border rounded-xl">
             <Search className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-            <p className="text-muted-foreground text-sm">No services found</p>
+            <p className="text-muted-foreground text-sm mb-4">No services found</p>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleAddService}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-400 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create New Service
+            </motion.button>
           </motion.div>
         )}
       </div>
@@ -561,7 +590,7 @@ export function VendorServices() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handleAddService}
-        className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-black rounded-full shadow-lg flex items-center justify-center z-40 touch-manipulation"
+        className="fixed bottom-24 right-6 w-14 h-14 bg-yellow-500 text-white rounded-full shadow-lg flex items-center justify-center z-[60] touch-manipulation"
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
         aria-label="Add service">
@@ -574,7 +603,6 @@ export function VendorServices() {
         onOpenChange={setIsFormModalOpen}
         onSave={handleSaveService}
         service={selectedService}
-        categories={categories}
       />
 
       {/* Delete Confirmation Dialog */}

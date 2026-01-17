@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { api } from "../../user/services/apiClient";
 
 export interface PricingTier {
   id: string;
@@ -8,9 +9,10 @@ export interface PricingTier {
 }
 
 export interface Service {
-  id: string;
+  _id: string;
   name: string;
   category: string;
+  gender?: string;
   price: number;
   duration: number; // in minutes
   description: string;
@@ -20,124 +22,117 @@ export interface Service {
   image?: string;
   pricingTiers?: PricingTier[];
   tags?: string[];
+  type?: "at-salon" | "at-home" | "spa";
 }
 
 interface ServiceState {
   services: Service[];
-  addService: (service: Omit<Service, "id">) => void;
-  updateService: (id: string, service: Partial<Service>) => void;
-  deleteService: (id: string) => void;
-  toggleActive: (id: string) => void;
+  categories: any[];
+  categoryTree: { headerName: string; subcategories: any[] }[]; // Add categoryTree
+  loading: boolean;
+  fetchServices: () => Promise<void>;
+  fetchCategories: (gender: string, type?: string) => Promise<void>; // Add fetchCategories
+  fetchPublicContent: () => Promise<void>;
+  addService: (service: any) => Promise<void>;
+  updateService: (id: string, service: any) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
+  toggleActive: (id: string) => Promise<void>;
   getService: (id: string) => Service | undefined;
 }
 
-// Initial mock services data
-const initialServices: Service[] = [
-  {
-    id: "1",
-    name: "Haircut & Styling",
-    category: "Hair",
-    price: 499,
-    duration: 45,
-    description: "Professional haircut with styling",
-    isActive: true,
-    rating: 4.8,
-    bookings: 156,
-  },
-  {
-    id: "2",
-    name: "Hair Color & Treatment",
-    category: "Hair",
-    price: 1299,
-    duration: 120,
-    description: "Full hair color with conditioning treatment",
-    isActive: true,
-    rating: 4.9,
-    bookings: 89,
-  },
-  {
-    id: "3",
-    name: "Beard Trim",
-    category: "Grooming",
-    price: 299,
-    duration: 30,
-    description: "Professional beard trimming and shaping",
-    isActive: true,
-    rating: 4.7,
-    bookings: 234,
-  },
-  {
-    id: "4",
-    name: "Facial Treatment",
-    category: "Skin",
-    price: 899,
-    duration: 60,
-    description: "Deep cleansing facial with massage",
-    isActive: true,
-    rating: 4.9,
-    bookings: 145,
-  },
-  {
-    id: "5",
-    name: "Manicure & Pedicure",
-    category: "Nails",
-    price: 799,
-    duration: 90,
-    description: "Complete nail care and polish",
-    isActive: false,
-    rating: 4.6,
-    bookings: 67,
-  },
-  {
-    id: "6",
-    name: "Hair Spa",
-    category: "Hair",
-    price: 1099,
-    duration: 75,
-    description: "Relaxing hair spa treatment",
-    isActive: true,
-    rating: 4.8,
-    bookings: 98,
-  },
-];
-
 export const useServiceStore = create<ServiceState>((set, get) => ({
-  services: initialServices,
-  
-  addService: (service) => {
-    const newService: Service = {
-      ...service,
-      id: `service_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    };
-    set((state) => ({
-      services: [...state.services, newService],
-    }));
+  services: [],
+  loading: false,
+
+  categories: [],
+  categoryTree: [],
+
+  fetchCategories: async (gender, type = "SALON") => {
+    try {
+      // Use the public endpoint that returns headers grouped with subcategories
+      const response: any = await api.get(
+        `/admin/public/categories/subcategories?gender=${gender.toUpperCase()}&type=${type.toUpperCase()}`
+      );
+      set({ categoryTree: response });
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+      set({ categoryTree: [] });
+    }
   },
-  
-  updateService: (id, updates) => {
-    set((state) => ({
-      services: state.services.map((service) =>
-        service.id === id ? { ...service, ...updates } : service
-      ),
-    }));
+
+  fetchPublicContent: async () => {
+    try {
+      const response: any = await api.get("/admin/content");
+      // admin public content returns categories and other info
+      // based on admin.controller.ts getPublicContent structure
+
+      const content = response.content || response; // Handle potentially unwrapped response
+
+      set({
+        categories: content.categories || [],
+      });
+    } catch (error) {
+      console.error("Failed to fetch public content:", error);
+    }
   },
-  
-  deleteService: (id) => {
-    set((state) => ({
-      services: state.services.filter((service) => service.id !== id),
-    }));
+
+  fetchServices: async () => {
+    set({ loading: true });
+    try {
+      const response: any = await api.get("/vendor/services");
+      set({ services: response, loading: false });
+    } catch (error) {
+      console.error("Failed to fetch services:", error);
+      set({ loading: false });
+    }
   },
-  
-  toggleActive: (id) => {
-    set((state) => ({
-      services: state.services.map((service) =>
-        service.id === id ? { ...service, isActive: !service.isActive } : service
-      ),
-    }));
+
+  addService: async (serviceData) => {
+    try {
+      const response: any = await api.post("/vendor/services", serviceData);
+      set((state) => ({
+        services: [...state.services, response],
+      }));
+    } catch (error) {
+      console.error("Failed to add service:", error);
+      throw error;
+    }
   },
-  
+
+  updateService: async (id, updates) => {
+    try {
+      const response: any = await api.put(`/vendor/services/${id}`, updates);
+      set((state) => ({
+        services: state.services.map((service) =>
+          service._id === id ? response : service
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to update service:", error);
+      throw error;
+    }
+  },
+
+  deleteService: async (id) => {
+    try {
+      await api.delete(`/vendor/services/${id}`);
+      set((state) => ({
+        services: state.services.filter((service) => service._id !== id),
+      }));
+    } catch (error) {
+      console.error("Failed to delete service:", error);
+      throw error;
+    }
+  },
+
+  toggleActive: async (id) => {
+    const service = get().services.find((s) => s._id === id);
+    if (service) {
+      await get().updateService(id, { isActive: !service.isActive });
+    }
+  },
+
   getService: (id) => {
-    return get().services.find((service) => service.id === id);
+    return get().services.find((service) => service._id === id);
   },
 }));
-

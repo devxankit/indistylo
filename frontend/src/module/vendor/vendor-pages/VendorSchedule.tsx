@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Calendar } from "lucide-react";
+import { ArrowLeft, Save, Calendar, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { transitions, staggerContainer } from "@/lib/animations";
 import { useScheduleStore } from "../store/useScheduleStore";
 import { DayScheduleCard } from "../vendor-components/DayScheduleCard";
+import { toast } from "sonner";
 
 export function VendorSchedule() {
   const navigate = useNavigate();
   const {
     schedules,
+    loading,
+    fetchSchedule,
+    saveSchedule,
     updateWorkingHours,
     toggleDay,
     addBreak,
@@ -17,15 +21,26 @@ export function VendorSchedule() {
     updateBreak,
   } = useScheduleStore();
 
-  const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => {
+    fetchSchedule();
+  }, [fetchSchedule]);
 
   const handleSave = async () => {
-    setIsSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    // In real app, save to backend
+    try {
+      await saveSchedule();
+      toast.success("Schedule updated successfully");
+    } catch (error) {
+      toast.error("Failed to update schedule");
+    }
   };
+
+  if (loading && schedules.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
@@ -55,10 +70,14 @@ export function VendorSchedule() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={loading}
             className="px-4 py-2 bg-primary text-black rounded-lg font-medium hover:bg-primary/90 transition-colors touch-manipulation min-h-[44px] flex items-center gap-2 disabled:opacity-50">
-            <Save className="w-4 h-4" />
-            <span className="text-sm">{isSaving ? "Saving..." : "Save"}</span>
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span className="text-sm">{loading ? "Saving..." : "Save"}</span>
           </motion.button>
         </div>
       </motion.div>
@@ -108,6 +127,23 @@ export function VendorSchedule() {
             />
           ))}
         </motion.div>
+      </div>
+
+      {/* Footer Save Button */}
+      <div className="px-4 pb-6">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleSave}
+          disabled={loading}
+          className="w-full py-3 bg-primary text-black rounded-xl font-bold hover:bg-primary/90 transition-colors touch-manipulation flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
+          {loading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Save className="w-5 h-5" />
+          )}
+          <span>{loading ? "Saving Schedule..." : "Save Changes"}</span>
+        </motion.button>
       </div>
     </div>
   );

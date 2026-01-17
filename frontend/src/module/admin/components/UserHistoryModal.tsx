@@ -2,16 +2,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Calendar, History, Search, FileClock } from "lucide-react";
-import { useState } from "react";
-
-// Mock Data
-// Mock Data
-const mockHistory = [
-    { id: "ORD - 001", date: "2024-01-15", vendor: "Luxe Salon", service: "Haircut", amount: 450, status: "completed" },
-    { id: "ORD - 002", date: "2023-12-20", vendor: "Glamour Spa", service: "Full Body Massage", amount: 1200, status: "completed" },
-    { id: "ORD - 003", date: "2023-11-05", vendor: "Style Studio", service: "Manicure", amount: 300, status: "cancelled" },
-    { id: "ORD - 004", date: "2023-10-12", vendor: "Luxe Salon", service: "Hair Color", amount: 2500, status: "completed" },
-];
+import { useState, useEffect } from "react";
+import { useAdminStore } from "../store/useAdminStore";
 
 interface UserHistoryModalProps {
     user: { name: string; email: string } | null;
@@ -20,19 +12,35 @@ interface UserHistoryModalProps {
 }
 
 export function UserHistoryModal({ user, open, onOpenChange }: UserHistoryModalProps) {
+    const [history, setHistory] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const { getUserHistory } = useAdminStore();
+
+    useEffect(() => {
+        if (open && user && (user as any)._id) {
+            const fetchHistory = async () => {
+                setLoading(true);
+                const data = await getUserHistory((user as any)._id);
+                setHistory(data);
+                setLoading(false);
+            };
+            fetchHistory();
+        }
+    }, [open, user]);
 
     if (!user) return null;
 
-    const filteredHistory = mockHistory.filter(order =>
-        order.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredHistory = history.filter(order =>
+        order.salon?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.service?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order._id.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[900px] p-6 rounded-xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl">
+                {/* ... existing header ... */}
                 <DialogHeader className="mb-4">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-primary/10 rounded-full">
@@ -72,7 +80,13 @@ export function UserHistoryModal({ user, open, onOpenChange }: UserHistoryModalP
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/50">
-                                    {filteredHistory.length === 0 ? (
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={5} className="py-12 text-center text-muted-foreground">
+                                                Loading history...
+                                            </td>
+                                        </tr>
+                                    ) : filteredHistory.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="py-12 text-center text-muted-foreground">
                                                 <div className="flex flex-col items-center gap-2">
@@ -83,21 +97,21 @@ export function UserHistoryModal({ user, open, onOpenChange }: UserHistoryModalP
                                         </tr>
                                     ) : (
                                         filteredHistory.map((order) => (
-                                            <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="px-4 py-3 font-medium font-mono text-xs">{order.id}</td>
+                                            <tr key={order._id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-4 py-3 font-medium font-mono text-xs">{order._id.slice(-6).toUpperCase()}</td>
                                                 <td className="px-4 py-3 text-muted-foreground text-xs">
                                                     <div className="flex items-center gap-1.5">
                                                         <Calendar className="w-3.5 h-3.5" />
-                                                        {order.date}
+                                                        {new Date(order.date).toLocaleDateString()}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex flex-col gap-0.5">
-                                                        <span className="font-medium text-foreground">{order.service}</span>
-                                                        <span className="text-xs text-muted-foreground">{order.vendor}</span>
+                                                        <span className="font-medium text-foreground">{order.service?.name || "Unknown Service"}</span>
+                                                        <span className="text-xs text-muted-foreground">{order.salon?.name || "Unknown Vendor"}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right font-bold text-sm">₹{order.amount}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-sm">₹{order.price}</td>
                                                 <td className="px-4 py-3 text-right">
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border
                                                         ${order.status === 'completed' ? 'bg-green-500/10 text-green-500 border-green-500/20' :

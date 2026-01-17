@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { Booking } from "../services/types";
+import { MapRoute } from "./MapRoute";
 
 interface BookingDetailDialogProps {
   booking: Booking | null;
@@ -40,10 +41,10 @@ export function BookingDetailDialog({
           <div className="flex justify-between items-start">
             <div>
               <DialogTitle className="text-xl font-bold">
-                {booking.service}
+                {booking.service?.name || "Service"}
               </DialogTitle>
               <p className="text-sm text-[#f5f5f5]/60 mt-1">
-                {booking.salonName}
+                {booking.salon?.name || "Salon"}
               </p>
             </div>
             <span
@@ -95,7 +96,7 @@ export function BookingDetailDialog({
                 <div>
                   <p className="text-xs text-[#f5f5f5]/40">Professional</p>
                   <p className="text-sm font-medium">
-                    {booking.professionalName || "Any Professional"}
+                    {(booking.professional as any)?.name || "Any Professional"}
                   </p>
                 </div>
               </div>
@@ -107,13 +108,28 @@ export function BookingDetailDialog({
                   <p className="text-xs text-[#f5f5f5]/40">Location</p>
                   <p className="text-sm font-medium leading-snug">
                     {booking.type === "at-home"
-                      ? "Home Service - Indiranagar, Bangalore"
-                      : "Salon - 12th Main Rd, HAL 2nd Stage"}
+                      ? booking.address || "Home Address"
+                      : (booking.salon as any).location || "Salon Address"}
                   </p>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Live Route */}
+          {isUpcoming && (booking.salon as any)?.geo?.coordinates && (
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[#f5f5f5]/40">
+                Live Route
+              </h3>
+              <MapRoute
+                destination={{
+                  lat: (booking.salon as any).geo.coordinates[1],
+                  lng: (booking.salon as any).geo.coordinates[0]
+                }}
+              />
+            </div>
+          )}
 
           {/* Payment Summary */}
           <div className="space-y-4">

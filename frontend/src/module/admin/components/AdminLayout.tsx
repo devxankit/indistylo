@@ -2,13 +2,19 @@ import { Outlet, Navigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
 import { useAdminStore } from "../store/useAdminStore";
 import { Bell, Search, Menu } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminNotificationModal } from "./AdminNotificationModal";
 
 export function AdminLayout() {
-    const { isAuthenticated, currentUser, notifications } = useAdminStore();
+    const { isAuthenticated, currentUser, notifications, fetchNotifications } = useAdminStore();
     const [showNotifications, setShowNotifications] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchNotifications();
+        }
+    }, [isAuthenticated, fetchNotifications]);
 
     if (!isAuthenticated) {
         return <Navigate to="/admin/auth" replace />;

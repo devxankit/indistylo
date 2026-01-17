@@ -11,7 +11,6 @@ import {
   Phone,
   Mail,
   Search,
-  Star,
   MessageSquare,
   Eye,
   ChevronDown,
@@ -37,108 +36,27 @@ import {
   startOfWeek,
   endOfWeek,
 } from "date-fns";
+import {
+  useVendorBookingStore,
+  type Booking,
+  type BookingStatus,
+} from "../store/useVendorBookingStore";
+import { toast } from "sonner";
 
-type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 type BookingTab = "all" | "pending" | "confirmed" | "completed" | "cancelled";
-
-interface Booking {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail?: string;
-  service: string;
-  date: string;
-  time: string;
-  status: BookingStatus;
-  amount: number;
-  address?: string;
-  duration: string;
-  rating?: number;
-  notes?: string;
-  paymentMethod: "cash" | "online" | "wallet";
-}
-
-const mockBookings: Booking[] = [
-  {
-    id: "1",
-    customerName: "Rajesh Kumar",
-    customerPhone: "+91 9876543210",
-    customerEmail: "rajesh@example.com",
-    service: "Haircut & Styling",
-    date: "2024-01-15",
-    time: "10:00 AM",
-    status: "confirmed",
-    amount: 499,
-    address: "123 Main Street, City, State - 123456",
-    duration: "45 min",
-    rating: 4.8,
-    paymentMethod: "online",
-  },
-  {
-    id: "2",
-    customerName: "Priya Sharma",
-    customerPhone: "+91 9876543211",
-    customerEmail: "priya@example.com",
-    service: "Hair Color & Treatment",
-    date: "2024-01-15",
-    time: "2:00 PM",
-    status: "pending",
-    amount: 1299,
-    address: "456 Park Avenue, City, State - 123456",
-    duration: "2 hours",
-    paymentMethod: "wallet",
-    notes: "Customer prefers natural hair color",
-  },
-  {
-    id: "3",
-    customerName: "Amit Singh",
-    customerPhone: "+91 9876543212",
-    service: "Beard Trim",
-    date: "2024-01-16",
-    time: "11:00 AM",
-    status: "confirmed",
-    amount: 299,
-    duration: "30 min",
-    paymentMethod: "cash",
-  },
-  {
-    id: "4",
-    customerName: "Sneha Patel",
-    customerPhone: "+91 9876543213",
-    customerEmail: "sneha@example.com",
-    service: "Facial Treatment",
-    date: "2024-01-14",
-    time: "3:00 PM",
-    status: "completed",
-    amount: 899,
-    duration: "1 hour",
-    rating: 5.0,
-    paymentMethod: "online",
-  },
-  {
-    id: "5",
-    customerName: "Vikram Mehta",
-    customerPhone: "+91 9876543214",
-    service: "Haircut",
-    date: "2024-01-13",
-    time: "4:00 PM",
-    status: "cancelled",
-    amount: 399,
-    duration: "40 min",
-    paymentMethod: "online",
-  },
-];
 
 // Helper functions for status
 const getStatusIcon = (status: BookingStatus) => {
   switch (status) {
     case "confirmed":
+    case "upcoming":
       return <CheckCircle2 className="w-4 h-4 text-green-400" />;
     case "pending":
       return <AlertCircle className="w-4 h-4 text-yellow-400" />;
     case "completed":
       return <CheckCircle2 className="w-4 h-4 text-blue-400" />;
     case "cancelled":
+    case "missed":
       return <XCircle className="w-4 h-4 text-red-400" />;
   }
 };
@@ -146,12 +64,14 @@ const getStatusIcon = (status: BookingStatus) => {
 const getStatusColor = (status: BookingStatus) => {
   switch (status) {
     case "confirmed":
+    case "upcoming":
       return "bg-green-400/20 text-green-400 border-green-400/30";
     case "pending":
       return "bg-yellow-400/20 text-yellow-400 border-yellow-400/30";
     case "completed":
       return "bg-blue-400/20 text-blue-400 border-blue-400/30";
     case "cancelled":
+    case "missed":
       return "bg-red-400/20 text-red-400 border-red-400/30";
   }
 };
@@ -171,7 +91,7 @@ const BookingCard = memo(
     const swipeHandlers = useSwipe({
       onSwipeLeft: () => {
         if (booking.status === "pending") {
-          onStatusChange(booking.id, "cancelled");
+          onStatusChange(booking._id, "cancelled");
         }
       },
       threshold: 50,
@@ -199,14 +119,6 @@ const BookingCard = memo(
                 <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
                   {booking.customerName}
                 </h3>
-                {booking.status === "completed" && booking.rating && (
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <span className="text-xs font-medium text-foreground">
-                      {booking.rating}
-                    </span>
-                  </div>
-                )}
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 {booking.customerPhone}
@@ -222,8 +134,8 @@ const BookingCard = memo(
               animate={
                 booking.status === "pending"
                   ? {
-                      scale: [1, 1.05, 1],
-                    }
+                    scale: [1, 1.05, 1],
+                  }
                   : {}
               }
               transition={{ duration: 2, repeat: Infinity }}>
@@ -238,37 +150,25 @@ const BookingCard = memo(
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
             <span className="font-medium text-foreground truncate">
-              {booking.service}
+              {booking.serviceName}
             </span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1 sm:gap-1.5">
               <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span className="whitespace-nowrap">
-                {booking.date} • {booking.time}
+                {format(new Date(booking.date), "dd MMM yyyy")} • {booking.time}
               </span>
             </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3 shrink-0" />
-              {booking.duration}
+            <span className="flex items-center gap-1 sm:gap-1.5">
+              <IndianRupee className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span>{booking.amount}</span>
+            </span>
+            <span className="flex items-center gap-1 sm:gap-1.5">
+              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span>{booking.professionalName}</span>
             </span>
           </div>
-          {booking.address && (
-            <div className="flex items-start gap-2 text-xs sm:text-sm">
-              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 shrink-0" />
-              <span className="text-foreground break-words">
-                {booking.address}
-              </span>
-            </div>
-          )}
-          {booking.notes && (
-            <div className="flex items-start gap-2 text-xs sm:text-sm bg-muted/30 rounded-lg p-2">
-              <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 shrink-0" />
-              <span className="text-foreground break-words">
-                {booking.notes}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Expandable Details */}
@@ -289,6 +189,23 @@ const BookingCard = memo(
                     </span>
                   </div>
                 )}
+                {booking.address && (
+                  <div className="flex items-start gap-2 text-xs sm:text-sm">
+                    <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                    <span className="text-foreground">{booking.address}</span>
+                  </div>
+                )}
+                {booking.notes && (
+                  <div className="flex items-start gap-2 text-xs sm:text-sm">
+                    <MessageSquare className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] text-muted-foreground uppercase font-semibold">
+                        Customer Notes
+                      </p>
+                      <p className="text-foreground">{booking.notes}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -306,37 +223,38 @@ const BookingCard = memo(
             </span>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
-            {booking.status === "pending" && (
-              <>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStatusChange(booking.id, "confirmed");
-                  }}
-                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] bg-green-400/10 text-green-400 border border-green-400/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-400/20 transition-colors touch-manipulation">
-                  Accept
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStatusChange(booking.id, "cancelled");
-                  }}
-                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] bg-red-400/10 text-red-400 border border-red-400/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-red-400/20 transition-colors touch-manipulation">
-                  Reject
-                </motion.button>
-              </>
-            )}
+            {(booking.status === "pending" ||
+              booking.status === "upcoming") && (
+                <>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStatusChange(booking._id, "confirmed");
+                    }}
+                    className="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] bg-green-400/10 text-green-400 border border-green-400/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-400/20 transition-colors touch-manipulation">
+                    Accept
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStatusChange(booking._id, "cancelled");
+                    }}
+                    className="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] bg-red-400/10 text-red-400 border border-red-400/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-red-400/20 transition-colors touch-manipulation">
+                    Reject
+                  </motion.button>
+                </>
+              )}
             {booking.status === "confirmed" && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onStatusChange(booking.id, "completed");
+                  onStatusChange(booking._id, "completed");
                 }}
                 className="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] bg-primary/10 text-primary border border-primary/30 rounded-lg text-xs sm:text-sm font-medium hover:bg-primary/20 transition-colors touch-manipulation">
                 Mark Complete
@@ -379,11 +297,16 @@ export function VendorBookings() {
   const [activeTab, setActiveTab] = useState<BookingTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [isLoading] = useState(false);
+  const { bookings, loading, fetchBookings, updateBookingStatus } =
+    useVendorBookingStore();
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   const tabContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
 
   useEffect(() => {
     const activeButton = tabRefs.current[activeTab];
@@ -396,22 +319,26 @@ export function VendorBookings() {
     }
   }, [activeTab]);
 
-  const filteredBookings = mockBookings.filter((booking) => {
+  const filteredBookings = bookings.filter((booking) => {
     const matchesTab = activeTab === "all" || booking.status === activeTab;
     const matchesSearch =
       searchQuery === "" ||
       booking.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       booking.customerPhone.includes(searchQuery);
     return matchesTab && matchesSearch;
   });
 
   const handleStatusChange = useCallback(
-    (bookingId: string, newStatus: BookingStatus) => {
-      // Handle status change
-      console.log("Status change", bookingId, newStatus);
+    async (bookingId: string, newStatus: BookingStatus) => {
+      try {
+        await updateBookingStatus(bookingId, newStatus);
+        toast.success(`Booking ${newStatus} successfully`);
+      } catch (error) {
+        toast.error("Failed to update booking status");
+      }
     },
-    []
+    [updateBookingStatus]
   );
 
   // Swipe handlers for tab navigation
@@ -447,15 +374,17 @@ export function VendorBookings() {
 
   const stats = useMemo(
     () => ({
-      total: mockBookings.length,
-      pending: mockBookings.filter((b) => b.status === "pending").length,
-      confirmed: mockBookings.filter((b) => b.status === "confirmed").length,
-      completed: mockBookings.filter((b) => b.status === "completed").length,
-      revenue: mockBookings
+      total: bookings.length,
+      pending: bookings.filter((b) => b.status === "pending").length,
+      confirmed: bookings.filter(
+        (b) => b.status === "confirmed" || b.status === "upcoming"
+      ).length,
+      completed: bookings.filter((b) => b.status === "completed").length,
+      revenue: bookings
         .filter((b) => b.status === "completed" || b.status === "confirmed")
         .reduce((sum, b) => sum + b.amount, 0),
     }),
-    []
+    [bookings]
   );
 
   const animatedRevenue = useCountUp(stats.revenue, { duration: 1500 });
@@ -470,12 +399,15 @@ export function VendorBookings() {
     end: calendarEnd,
   });
 
-  const getBookingsForDate = useCallback((date: Date) => {
-    return mockBookings.filter((booking) => {
-      const bookingDate = new Date(booking.date);
-      return isSameDay(bookingDate, date);
-    });
-  }, []);
+  const getBookingsForDate = useCallback(
+    (date: Date) => {
+      return bookings.filter((booking) => {
+        const bookingDate = new Date(booking.date);
+        return isSameDay(bookingDate, date);
+      });
+    },
+    [bookings]
+  );
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -667,11 +599,11 @@ export function VendorBookings() {
                         "aspect-square p-1 rounded-lg border transition-all cursor-pointer min-h-[44px] touch-manipulation flex flex-col items-center justify-center",
                         isCurrentDay && "border-primary bg-primary/10",
                         !isCurrentDay &&
-                          hasBookings &&
-                          "border-primary/30 bg-primary/5",
+                        hasBookings &&
+                        "border-primary/30 bg-primary/5",
                         !isCurrentDay &&
-                          !hasBookings &&
-                          "border-border hover:border-primary/50",
+                        !hasBookings &&
+                        "border-border hover:border-primary/50",
                         !isCurrentMonth && "opacity-40"
                       )}>
                       <span
@@ -710,7 +642,7 @@ export function VendorBookings() {
                   className="space-y-3">
                   {getBookingsForDate(currentMonth).map((booking) => (
                     <BookingCard
-                      key={booking.id}
+                      key={booking._id}
                       booking={booking}
                       onSelect={() => setSelectedBooking(booking)}
                       onStatusChange={handleStatusChange}
@@ -740,7 +672,7 @@ export function VendorBookings() {
                   const isActive = activeTab === tab;
                   const count =
                     tab !== "all"
-                      ? mockBookings.filter((b) => b.status === tab).length
+                      ? bookings.filter((b) => b.status === tab).length
                       : 0;
                   return (
                     <motion.button
@@ -792,7 +724,7 @@ export function VendorBookings() {
         {/* List View - Only show when in list mode */}
         {viewMode === "list" && (
           <>
-            {isLoading ? (
+            {loading ? (
               <div className="space-y-3 sm:space-y-4">
                 {[1, 2, 3].map((i) => (
                   <ListItemSkeleton key={i} />
@@ -806,7 +738,7 @@ export function VendorBookings() {
                 className="space-y-3 sm:space-y-4">
                 {filteredBookings.map((booking) => (
                   <BookingCard
-                    key={booking.id}
+                    key={booking._id}
                     booking={booking}
                     onSelect={() => setSelectedBooking(booking)}
                     onStatusChange={handleStatusChange}
@@ -934,7 +866,7 @@ export function VendorBookings() {
                         Service
                       </span>
                       <span className="text-xs sm:text-sm font-medium text-foreground text-right break-words">
-                        {selectedBooking.service}
+                        {selectedBooking.serviceName}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -942,7 +874,8 @@ export function VendorBookings() {
                         Date & Time
                       </span>
                       <span className="text-xs sm:text-sm font-medium text-foreground text-right whitespace-nowrap">
-                        {selectedBooking.date} • {selectedBooking.time}
+                        {format(new Date(selectedBooking.date), "dd MMM yyyy")}{" "}
+                        • {selectedBooking.time}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
@@ -953,11 +886,19 @@ export function VendorBookings() {
                         {selectedBooking.duration}
                       </span>
                     </div>
-                    {selectedBooking.address && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Type
+                      </span>
+                      <span className="text-xs sm:text-sm font-medium text-foreground capitalize">
+                        {selectedBooking.type.replace("-", " ")}
+                      </span>
+                    </div>
+                    {selectedBooking.notes && (
                       <div className="flex items-start justify-between gap-2 pt-1.5 border-t border-border">
-                        <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                        <MessageSquare className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
                         <span className="text-xs text-foreground text-right flex-1 ml-2 break-words">
-                          {selectedBooking.address}
+                          {selectedBooking.notes}
                         </span>
                       </div>
                     )}
@@ -994,34 +935,35 @@ export function VendorBookings() {
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
-                  {selectedBooking.status === "pending" && (
-                    <>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() =>
-                          handleStatusChange(selectedBooking.id, "confirmed")
-                        }
-                        className="flex-1 h-11 min-h-[44px] bg-green-400/10 text-green-400 border border-green-400/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-green-400/20 transition-colors touch-manipulation">
-                        Accept
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() =>
-                          handleStatusChange(selectedBooking.id, "cancelled")
-                        }
-                        className="flex-1 h-11 min-h-[44px] bg-red-400/10 text-red-400 border border-red-400/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-red-400/20 transition-colors touch-manipulation">
-                        Reject
-                      </motion.button>
-                    </>
-                  )}
+                  {(selectedBooking.status === "pending" ||
+                    selectedBooking.status === "upcoming") && (
+                      <>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() =>
+                            handleStatusChange(selectedBooking._id, "confirmed")
+                          }
+                          className="flex-1 h-11 min-h-[44px] bg-green-400/10 text-green-400 border border-green-400/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-green-400/20 transition-colors touch-manipulation">
+                          Accept
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() =>
+                            handleStatusChange(selectedBooking._id, "cancelled")
+                          }
+                          className="flex-1 h-11 min-h-[44px] bg-red-400/10 text-red-400 border border-red-400/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-red-400/20 transition-colors touch-manipulation">
+                          Reject
+                        </motion.button>
+                      </>
+                    )}
                   {selectedBooking.status === "confirmed" && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() =>
-                        handleStatusChange(selectedBooking.id, "completed")
+                        handleStatusChange(selectedBooking._id, "completed")
                       }
                       className="w-full h-11 min-h-[44px] bg-primary/10 text-primary border border-primary/30 rounded-xl text-xs sm:text-sm font-medium hover:bg-primary/20 transition-colors touch-manipulation">
                       Mark Complete
